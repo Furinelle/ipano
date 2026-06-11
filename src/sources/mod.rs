@@ -1,6 +1,7 @@
 pub mod ipapi;
 pub mod ipinfo;
 pub mod ipsb;
+pub mod netcoffee;
 
 use std::net::IpAddr;
 use async_trait::async_trait;
