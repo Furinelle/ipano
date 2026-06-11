@@ -1,5 +1,9 @@
+use std::net::IpAddr;
+use async_trait::async_trait;
+use reqwest::Client;
 use serde::Deserialize;
-use crate::model::{SourceData, SourceError, IpType};
+use crate::model::{SourceData, SourceError, IpType, SourceResult};
+use crate::sources::Source;
 
 #[derive(Deserialize)]
 struct Resp {
@@ -31,6 +35,32 @@ pub(crate) fn split_as(s: &str) -> (Option<u32>, Option<String>) {
         if num.is_some() { return (num, org); }
     }
     (None, Some(s.to_string()))
+}
+
+const FIELDS: &str = "status,message,country,regionName,city,lat,lon,timezone,isp,org,as,proxy,hosting,mobile,query";
+
+pub struct IpApi {
+    pub base: String,
+}
+
+impl Default for IpApi {
+    fn default() -> Self {
+        IpApi { base: "http://ip-api.com".to_string() }
+    }
+}
+
+#[async_trait]
+impl Source for IpApi {
+    fn id(&self) -> &'static str { "ipapi" }
+    async fn fetch(&self, client: &Client, ip: IpAddr) -> SourceResult {
+        let url = format!("{}/json/{}?fields={}", self.base, ip, FIELDS);
+        let resp = client.get(&url).send().await
+            .map_err(|e| if e.is_timeout() { SourceError::Timeout }
+                         else { SourceError::Unavailable(e.to_string()) })?;
+        let body = resp.text().await
+            .map_err(|e| SourceError::Unavailable(e.to_string()))?;
+        parse(&body)
+    }
 }
 
 pub fn parse(body: &str) -> Result<SourceData, SourceError> {
@@ -96,5 +126,19 @@ mod tests {
     fn split_as_parses_asn_and_org() {
         assert_eq!(split_as("AS13335 Cloudflare, Inc."), (Some(13335), Some("Cloudflare, Inc.".into())));
         assert_eq!(split_as("Cloudflare"), (None, Some("Cloudflare".into())));
+    }
+
+    #[tokio::test]
+    async fn fetch_hits_endpoint_and_parses() {
+        let server = httpmock::MockServer::start();
+        let m = server.mock(|when, then| {
+            when.path("/json/1.1.1.1");
+            then.status(200).body(SAMPLE);
+        });
+        let src = IpApi { base: server.base_url() };
+        let client = crate::fetch::build_client(5);
+        let d = src.fetch(&client, "1.1.1.1".parse().unwrap()).await.unwrap();
+        m.assert();
+        assert_eq!(d.asn, Some(13335));
     }
 }
