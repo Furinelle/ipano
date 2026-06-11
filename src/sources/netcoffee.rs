@@ -51,6 +51,30 @@ fn derive_ip_type(r: &Resp) -> Option<IpType> {
     }
 }
 
+pub struct NetCoffee {
+    pub base: String,
+}
+
+impl Default for NetCoffee {
+    fn default() -> Self {
+        NetCoffee { base: "https://ip.net.coffee".to_string() }
+    }
+}
+
+#[async_trait]
+impl Source for NetCoffee {
+    fn id(&self) -> &'static str { "netcoffee" }
+    async fn fetch(&self, client: &Client, ip: IpAddr) -> SourceResult {
+        let url = format!("{}/api/iprisk/{}", self.base, ip);
+        let resp = client.get(&url).send().await
+            .map_err(|e| if e.is_timeout() { SourceError::Timeout }
+                         else { SourceError::Unavailable(e.to_string()) })?;
+        if resp.status().as_u16() == 429 { return Err(SourceError::RateLimited); }
+        let body = resp.text().await.map_err(|e| SourceError::Unavailable(e.to_string()))?;
+        parse(&body)
+    }
+}
+
 pub fn parse(body: &str) -> Result<SourceData, SourceError> {
     let r: Resp = serde_json::from_str(body).map_err(|e| SourceError::Parse(e.to_string()))?;
     let mut d = SourceData::new("netcoffee");
@@ -125,5 +149,20 @@ mod tests {
     #[test]
     fn parse_rejects_garbage() {
         assert!(parse("not json").is_err());
+    }
+
+    #[tokio::test]
+    async fn fetch_hits_iprisk_endpoint() {
+        let server = httpmock::MockServer::start();
+        let m = server.mock(|when, then| {
+            when.path("/api/iprisk/1.1.1.1");
+            then.status(200).body(SAMPLE);
+        });
+        let src = NetCoffee { base: server.base_url() };
+        let client = crate::fetch::build_client(5);
+        let d = src.fetch(&client, "1.1.1.1".parse().unwrap()).await.unwrap();
+        m.assert();
+        assert_eq!(d.trust_score, Some(41));
+        assert_eq!(d.asn, Some(13335));
     }
 }
