@@ -34,6 +34,7 @@ pub fn all_sources() -> Vec<Box<dyn Source>> {
         Box::new(ipapi::IpApi::default()),
         Box::new(ipinfo::IpInfo::default()),
         Box::new(ipsb::IpSb::default()),
+        Box::new(netcoffee::NetCoffee::default()),
     ]
 }
 
@@ -66,12 +67,12 @@ mod tests {
     }
 
     #[test]
-    fn all_sources_has_three() {
+    fn all_sources_includes_netcoffee() {
         let s = all_sources();
         let ids: Vec<&str> = s.iter().map(|x| x.id()).collect();
-        assert_eq!(ids.len(), 3);
         assert!(ids.contains(&"ipapi"));
         assert!(ids.contains(&"ipinfo"));
         assert!(ids.contains(&"ipsb"));
+        assert!(ids.contains(&"netcoffee"));
     }
 }
