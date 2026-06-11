@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-**v0.2.0 — P2 风险/纯净度源**。已实现免 key 基础源 + ip.net.coffee 风险源聚合;西方欺诈库、流媒体/AI/邮局探测、三网回程路由等在后续阶段交付(见[路线图](#路线图))。
+**v0.3.0 — P3 ippure 欺诈源**。已实现免 key 基础源 + ip.net.coffee 风险源 + ippure 欺诈源聚合;需 key 的西方欺诈库、流媒体/AI/邮局探测、三网回程路由等在后续阶段交付(见[路线图](#路线图))。
 
 ## 功能(当前版本)
 
@@ -15,6 +15,7 @@
 - **混合式合并**:基础字段按源优先级去重合一,报告标注各源成功/失败状态
 - **双输出**:彩色终端报告 + 机器可读 JSON
 - **风险/纯净度**:接入 ip.net.coffee `iprisk` 接口,呈现纯净度、滥用评分、信誉威胁值、AI 判定及代理/VPN/Tor/机房等标记
+- **欺诈分**:接入 [ippure](https://ippure.com) `fraudScore`(仅本机出口模式;查指定 IP 时该源自动跳过,因其 API 只返回调用者 IP)
 
 ## 安装与构建
 
@@ -68,7 +69,7 @@ ipano --timeout 5      # 单源超时(秒,默认 8)
 | P0 | 项目骨架、核心抽象 | ✅ |
 | P1 | 免 key 基础源(ip-api/ipinfo/ip.sb)+ 合并渲染 | ✅ |
 | P2 | **ip.net.coffee 风控/纯净度源**(trust_score/abuser/rep_threat/AI 判定)+ ping0 cookie 复用降级 | ✅ |
-| P3 | ippure + 西方欺诈库交叉确认 | 计划中 |
+| P3 | **ippure 欺诈源**(fraudScore,egress 专用)+ ip-api 代理/机房交叉确认 | ✅ |
 | P4 | 西方欺诈库(scamalytics/IPQS/AbuseIPDB/IP2Location/DB-IP,key 可选)| 计划中 |
 | P5 | 关键判定横向对比表 + 启发式结论 + markdown 导出 + i18n | 计划中 |
 | P6 | 流媒体 + AI 解锁探测 | 计划中 |

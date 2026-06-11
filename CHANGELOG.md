@@ -4,6 +4,23 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.3.0] - 2026-06-12
+
+P3:ippure 欺诈源(egress 专用)。
+
+### 新增
+
+- **ippure 源**:接入 `my.ippure.com/v1/info`,提供 fraudScore(欺诈分)、isResidential、isBroadcast 及 asn/geo;`SourceData`/`MergedReport` 新增 `fraud_score` 字段,贯通终端"欺诈分"行与 JSON 输出
+- **egress 守卫**:ippure API 只返回调用者出口 IP,无法查指定 IP。源在返回 ip 与查询 ip 不符时自动跳过(降级),仅在无参查本机模式贡献数据
+- ip-api 的 proxy/hosting/mobile 字段(P1 已含)作为指定 IP 模式下的代理/机房交叉确认
+
+### 说明
+
+- 西方欺诈库 scamalytics 免 key 抓取返回 403,IPQS/AbuseIPDB 等需 key,统一推迟到后续 key 可选阶段,不在 P3 强接
+- 欺诈分(ippure,越高越危险)与纯净度(net.coffee,越高越干净)、风控值(ping0,越高越危险)按源独立保留
+
+[0.3.0]: https://github.com/Furinelle/ipano/releases/tag/v0.3.0
+
 ## [0.2.0] - 2026-06-12
 
 P2:差异化风险/纯净度源。
