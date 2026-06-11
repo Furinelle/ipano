@@ -12,6 +12,13 @@ pub enum IpType {
     Unknown,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AiVerdict {
+    pub label: String,
+    pub confidence: i64,
+    pub reasoning: String,
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SourceData {
     pub source_id: String,
@@ -31,6 +38,16 @@ pub struct SourceData {
     pub is_vpn: Option<bool>,
     pub is_tor: Option<bool>,
     pub is_hosting: Option<bool>,
+    // —— P2 风险/纯净度字段 ——
+    pub trust_score: Option<i64>,   // 可信/纯净分 0-100,越高越干净(net.coffee)
+    pub risk_score: Option<i64>,    // 风控值 0-100,越高越危险(ping0)
+    pub abuser_score: Option<String>,
+    pub rep_threat: Option<i64>,    // 信誉威胁值(net.coffee)
+    pub ai_verdict: Option<AiVerdict>,
+    pub is_abuser: Option<bool>,
+    pub is_crawler: Option<bool>,
+    pub is_mobile: Option<bool>,
+    pub is_residential: Option<bool>,
 }
 
 impl SourceData {
@@ -73,5 +90,30 @@ mod tests {
     fn iptype_serializes_to_lowercase_tag() {
         let j = serde_json::to_string(&IpType::Hosting).unwrap();
         assert_eq!(j, "\"hosting\"");
+    }
+
+    #[test]
+    fn sourcedata_has_risk_fields() {
+        let mut d = SourceData::new("netcoffee");
+        d.trust_score = Some(41);
+        d.risk_score = Some(80);
+        d.rep_threat = Some(29);
+        d.abuser_score = Some("0.0234 (Elevated)".into());
+        d.is_abuser = Some(true);
+        d.ai_verdict = Some(AiVerdict {
+            label: "Suspicious".into(), confidence: 60,
+            reasoning: "Mid-low trust score".into(),
+        });
+        assert_eq!(d.trust_score, Some(41));
+        assert_eq!(d.ai_verdict.as_ref().unwrap().confidence, 60);
+    }
+
+    #[test]
+    fn ai_verdict_roundtrips_json() {
+        let v = AiVerdict { label: "Clean".into(), confidence: 90, reasoning: "ok".into() };
+        let s = serde_json::to_string(&v).unwrap();
+        let back: AiVerdict = serde_json::from_str(&s).unwrap();
+        assert_eq!(back.label, "Clean");
+        assert_eq!(back.confidence, 90);
     }
 }
