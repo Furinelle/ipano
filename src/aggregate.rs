@@ -2,7 +2,7 @@ use std::net::IpAddr;
 use crate::model::{SourceData, SourceResult, IpType};
 
 /// 源优先级(靠前更可信),合并基础字段时按此顺序取首个非空值
-const PRIORITY: [&str; 4] = ["ipinfo", "ipsb", "netcoffee", "ipapi"];
+const PRIORITY: [&str; 5] = ["ipinfo", "ipsb", "netcoffee", "ippure", "ipapi"];
 
 pub struct SourceStatus {
     pub id: String,
@@ -38,6 +38,7 @@ pub struct MergedReport {
     pub is_crawler: Option<bool>,
     pub is_mobile: Option<bool>,
     pub is_residential: Option<bool>,
+    pub fraud_score: Option<i64>,
     pub sources: Vec<SourceStatus>,
 }
 
@@ -71,6 +72,7 @@ pub fn merge(ip: IpAddr, results: Vec<(String, SourceResult)>) -> MergedReport {
     pick!(ip_type); pick!(is_proxy); pick!(is_vpn); pick!(is_tor); pick!(is_hosting);
     pick!(trust_score); pick!(risk_score); pick!(abuser_score); pick!(rep_threat);
     pick!(ai_verdict); pick!(is_abuser); pick!(is_crawler); pick!(is_mobile); pick!(is_residential);
+    pick!(fraud_score);
     m
 }
 
