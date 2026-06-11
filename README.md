@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-**v0.3.0 — P3 ippure 欺诈源**。已实现免 key 基础源 + ip.net.coffee 风险源 + ippure 欺诈源聚合;需 key 的西方欺诈库、流媒体/AI/邮局探测、三网回程路由等在后续阶段交付(见[路线图](#路线图))。
+**v0.4.0 — P4 西方欺诈库**。已实现免 key 基础源 + ip.net.coffee 风险源 + ippure 欺诈源 + 可选 key 的 AbuseIPDB/IPQS 聚合;流媒体/AI/邮局探测、三网回程路由等在后续阶段交付(见[路线图](#路线图))。
 
 ## 功能(当前版本)
 
@@ -16,6 +16,7 @@
 - **双输出**:彩色终端报告 + 机器可读 JSON
 - **风险/纯净度**:接入 ip.net.coffee `iprisk` 接口,呈现纯净度、滥用评分、信誉威胁值、AI 判定及代理/VPN/Tor/机房等标记
 - **欺诈分**:接入 [ippure](https://ippure.com) `fraudScore`(仅本机出口模式;查指定 IP 时该源自动跳过,因其 API 只返回调用者 IP)
+- **西方欺诈库(可选 key)**:配置环境变量后启用 [AbuseIPDB](https://www.abuseipdb.com)(`IPANO_ABUSEIPDB_KEY`,滥用置信度)与 [IPQS](https://www.ipqualityscore.com)(`IPANO_IPQS_KEY`,欺诈分 + proxy/vpn/tor);未配置则自动跳过并标注,绝不伪造
 
 ## 安装与构建
 
@@ -70,7 +71,7 @@ ipano --timeout 5      # 单源超时(秒,默认 8)
 | P1 | 免 key 基础源(ip-api/ipinfo/ip.sb)+ 合并渲染 | ✅ |
 | P2 | **ip.net.coffee 风控/纯净度源**(trust_score/abuser/rep_threat/AI 判定)+ ping0 cookie 复用降级 | ✅ |
 | P3 | **ippure 欺诈源**(fraudScore,egress 专用)+ ip-api 代理/机房交叉确认 | ✅ |
-| P4 | 西方欺诈库(scamalytics/IPQS/AbuseIPDB/IP2Location/DB-IP,key 可选)| 计划中 |
+| P4 | **西方欺诈库**(AbuseIPDB + IPQS,key 可选,无 key 自动跳过)| ✅ |
 | P5 | 关键判定横向对比表 + 启发式结论 + markdown 导出 + i18n | 计划中 |
 | P6 | 流媒体 + AI 解锁探测 | 计划中 |
 | P7 | 邮局连通性探测 | 计划中 |
