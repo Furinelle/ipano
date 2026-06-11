@@ -4,6 +4,24 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.4.0] - 2026-06-12
+
+P4:西方欺诈库(key 可选)。
+
+### 新增
+
+- **AbuseIPDB 源**:接入 `/api/v2/check`(env `IPANO_ABUSEIPDB_KEY`),提供滥用置信度 `abuseipdb_score` 与 totalReports→is_abuser;经 header `Key` 鉴权,429 识别为限流
+- **IPQS 源**:接入 `/api/json/ip/{key}/{ip}`(env `IPANO_IPQS_KEY`),提供欺诈分 `ipqs_score` 与 proxy/vpn/tor/crawler/mobile/recent_abuse 标记及 asn/geo;success=false 时降级
+- **key 可选语义**:两源 `needs_key()` 标注所需环境变量,未配置 key 时返回 NeedsKey 自动跳过并标注,不阻塞其它源、不伪造数据
+- 数据模型新增 `abuseipdb_score`/`ipqs_score` 字段,贯通终端风险区与 JSON
+
+### 说明
+
+- scamalytics 免 key 抓取返回 403、IP2Location 需 key,本阶段未接入;后续如有免 key 通道再补
+- 各欺诈分按源独立保留(AbuseIPDB 置信度、IPQS 欺诈分、ippure 欺诈分),不强行折算
+
+[0.4.0]: https://github.com/Furinelle/ipano/releases/tag/v0.4.0
+
 ## [0.3.0] - 2026-06-12
 
 P3:ippure 欺诈源(egress 专用)。

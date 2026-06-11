@@ -50,6 +50,9 @@ pub struct SourceData {
     pub is_residential: Option<bool>,
     // —— P3 ——
     pub fraud_score: Option<i64>,   // 欺诈分 0-100,越高越危险(ippure)
+    // —— P4 西方欺诈库(各源独立保留)——
+    pub abuseipdb_score: Option<i64>,  // 滥用置信度 0-100(AbuseIPDB,需 key)
+    pub ipqs_score: Option<i64>,       // 欺诈分 0-100(IPQS,需 key)
 }
 
 impl SourceData {

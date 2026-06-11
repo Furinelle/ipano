@@ -34,6 +34,8 @@ pub fn render(r: &MergedReport, no_color: bool) -> String {
         if let Some(v) = r.trust_score { rt.add_row(vec!["纯净度(越高越干净)".to_string(), v.to_string()]); }
         if let Some(v) = r.risk_score { rt.add_row(vec!["风控值(越高越危险)".to_string(), v.to_string()]); }
         if let Some(v) = r.fraud_score { rt.add_row(vec!["欺诈分(越高越危险)".to_string(), v.to_string()]); }
+        if let Some(v) = r.ipqs_score { rt.add_row(vec!["IPQS 欺诈分".to_string(), v.to_string()]); }
+        if let Some(v) = r.abuseipdb_score { rt.add_row(vec!["AbuseIPDB 置信度".to_string(), v.to_string()]); }
         if let Some(v) = r.rep_threat { rt.add_row(vec!["信誉威胁值".to_string(), v.to_string()]); }
         if let Some(s) = &r.abuser_score { rt.add_row(vec!["滥用评分".to_string(), s.clone()]); }
         rt.add_row(vec!["标记".to_string(), risk_flags(r)]);
@@ -56,6 +58,7 @@ pub fn render(r: &MergedReport, no_color: bool) -> String {
 fn has_risk(r: &MergedReport) -> bool {
     r.trust_score.is_some() || r.risk_score.is_some() || r.rep_threat.is_some()
         || r.abuser_score.is_some() || r.ai_verdict.is_some() || r.fraud_score.is_some()
+        || r.abuseipdb_score.is_some() || r.ipqs_score.is_some()
         || r.is_proxy == Some(true) || r.is_vpn == Some(true) || r.is_tor == Some(true)
         || r.is_abuser == Some(true) || r.ip_type.is_some()
 }
