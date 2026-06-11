@@ -36,6 +36,7 @@ pub fn all_sources() -> Vec<Box<dyn Source>> {
         Box::new(ipinfo::IpInfo::default()),
         Box::new(ipsb::IpSb::default()),
         Box::new(netcoffee::NetCoffee::default()),
+        Box::new(ping0::Ping0::default()),
     ]
 }
 

@@ -134,4 +134,23 @@ mod tests {
         assert_eq!(d.source_id, "ping0");
         assert_eq!(d.risk_score, Some(41));
     }
+
+    #[test]
+    fn parse_extracts_risk_and_native() {
+        let d = parse(PING0_HTML).unwrap();
+        assert_eq!(d.risk_score, Some(41));
+        assert_eq!(d.ip_type, Some(IpType::Native));
+    }
+
+    #[test]
+    fn parse_unrecognized_page_errors() {
+        let err = parse("<html><body>欢迎</body></html>").unwrap_err();
+        assert!(matches!(err, SourceError::Parse(_)));
+    }
+
+    #[test]
+    fn risk_label_rejects_out_of_range() {
+        assert_eq!(risk_after_label("风控值 250 分", "风控值"), None);
+        assert_eq!(risk_after_label("风控值 88 分", "风控值"), Some(88));
+    }
 }
