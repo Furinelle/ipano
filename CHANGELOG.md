@@ -4,6 +4,24 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.2.0] - 2026-06-12
+
+P2:差异化风险/纯净度源。
+
+### 新增
+
+- **ip.net.coffee 源**:接入 `/api/iprisk/{ip}` JSON 接口,提供纯净度(trust_score)、滥用评分、信誉威胁值、AI 判定(label/confidence/reasoning)及 is_abuser/is_crawler/is_mobile/is_residential 等标记
+- **ping0 cookie 复用源**:支持经 `IPANO_PING0_TOKEN` 环境变量提供浏览器 token 复用;命中 Turnstile 验证码或无 token 时优雅降级(ChallengeFailed/NeedsKey),不阻塞整体
+- **数据模型**:`SourceData`/`MergedReport` 新增 trust_score/risk_score/abuser_score/rep_threat/ai_verdict 及四个 is_* 字段;新增 `AiVerdict` 结构
+- **渲染**:终端报告新增"风险/纯净度"区(纯净度/风控值/信誉威胁/滥用评分/标记/AI 判定);JSON 补齐 is_vpn/is_tor 及全部风险字段
+
+### 说明
+
+- ping0.cc 已被 Cloudflare Turnstile 全站接管且 token 60 秒过期,本工具不绕过验证码,仅在用户自带有效 cookie 时复用
+- 风险分按源独立保留(net.coffee 纯净度越高越干净;ping0 风控值越高越危险),不强行折算成单一数字
+
+[0.2.0]: https://github.com/Furinelle/ipano/releases/tag/v0.2.0
+
 ## [0.1.0] - 2026-06-12
 
 地基 MVP(设计文档 P0–P1)。

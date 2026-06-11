@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-**v0.1.0 — 地基 MVP(P0–P1)**。已实现免 key 基础源的聚合查询;ping0/ippure/ip.net.coffee、西方欺诈库、流媒体/AI/邮局探测、三网回程路由等在后续阶段交付(见[路线图](#路线图))。
+**v0.2.0 — P2 风险/纯净度源**。已实现免 key 基础源 + ip.net.coffee 风险源聚合;西方欺诈库、流媒体/AI/邮局探测、三网回程路由等在后续阶段交付(见[路线图](#路线图))。
 
 ## 功能(当前版本)
 
@@ -14,6 +14,7 @@
 - **多源并发聚合**:同时查询 [ip-api](https://ip-api.com)、[ipinfo](https://ipinfo.io)、[ip.sb](https://ip.sb),单源失败自动降级、不拖垮整体
 - **混合式合并**:基础字段按源优先级去重合一,报告标注各源成功/失败状态
 - **双输出**:彩色终端报告 + 机器可读 JSON
+- **风险/纯净度**:接入 ip.net.coffee `iprisk` 接口,呈现纯净度、滥用评分、信誉威胁值、AI 判定及代理/VPN/Tor/机房等标记
 
 ## 安装与构建
 
@@ -58,14 +59,16 @@ ipano --timeout 5      # 单源超时(秒,默认 8)
 
 `ipano` 跑在服务端,**无法**获取以下客户端浏览器行为(它们需要真实浏览器):浏览器指纹、WebRTC 泄露、DNS 泄露检测。报告中这类项会明确标注"CLI 不适用",不伪造数据。
 
+**关于 ping0.cc**:ping0 现已被 Cloudflare Turnstile 验证码全站接管,且其 token 60 秒过期,无法程序化抓取(强行绕过验证码不在本工具范围)。ipano 仅支持 **cookie 复用**:在浏览器中解开 ping0 验证码后,把 `token` cookie 值通过环境变量 `IPANO_PING0_TOKEN` 提供(60 秒内有效),ipano 会在该窗口内复用;未提供或已失效时,ping0 源自动标注降级,不影响其它源。
+
 ## 路线图
 
 | 阶段 | 内容 | 状态 |
 |---|---|---|
 | P0 | 项目骨架、核心抽象 | ✅ |
 | P1 | 免 key 基础源(ip-api/ipinfo/ip.sb)+ 合并渲染 | ✅ |
-| P2 | **ping0.cc**(风控值/纯净度/原生 IP,token 复刻 + 降级)| 计划中 |
-| P3 | ippure + ip.net.coffee(服务端字段) | 计划中 |
+| P2 | **ip.net.coffee 风控/纯净度源**(trust_score/abuser/rep_threat/AI 判定)+ ping0 cookie 复用降级 | ✅ |
+| P3 | ippure + 西方欺诈库交叉确认 | 计划中 |
 | P4 | 西方欺诈库(scamalytics/IPQS/AbuseIPDB/IP2Location/DB-IP,key 可选)| 计划中 |
 | P5 | 关键判定横向对比表 + 启发式结论 + markdown 导出 + i18n | 计划中 |
 | P6 | 流媒体 + AI 解锁探测 | 计划中 |
