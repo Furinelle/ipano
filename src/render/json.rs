@@ -31,6 +31,7 @@ pub fn to_json(r: &MergedReport) -> String {
         "abuser_score": r.abuser_score,
         "rep_threat": r.rep_threat,
         "ai_verdict": r.ai_verdict,
+        "fraud_score": r.fraud_score,
         "sources": sources,
     });
     serde_json::to_string_pretty(&v).unwrap()

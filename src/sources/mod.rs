@@ -3,6 +3,7 @@ pub mod ipinfo;
 pub mod ipsb;
 pub mod netcoffee;
 pub mod ping0;
+pub mod ippure;
 
 use std::net::IpAddr;
 use async_trait::async_trait;
@@ -37,6 +38,7 @@ pub fn all_sources() -> Vec<Box<dyn Source>> {
         Box::new(ipsb::IpSb::default()),
         Box::new(netcoffee::NetCoffee::default()),
         Box::new(ping0::Ping0::default()),
+        Box::new(ippure::IpPure::default()),
     ]
 }
 

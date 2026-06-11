@@ -48,6 +48,8 @@ pub struct SourceData {
     pub is_crawler: Option<bool>,
     pub is_mobile: Option<bool>,
     pub is_residential: Option<bool>,
+    // —— P3 ——
+    pub fraud_score: Option<i64>,   // 欺诈分 0-100,越高越危险(ippure)
 }
 
 impl SourceData {
