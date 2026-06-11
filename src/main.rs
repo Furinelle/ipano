@@ -1,4 +1,5 @@
 mod aggregate;
+mod egress;
 mod model;
 mod fetch;
 mod sources;
