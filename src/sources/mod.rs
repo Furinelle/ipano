@@ -27,9 +27,13 @@ pub async fn run_all(
     join_all(futs).await
 }
 
-/// 默认启用的全部免 key 源(Task 9 恢复为三源,本任务临时返回空)
+/// 默认启用的全部免 key 源(Task 9 恢复为三源)
 pub fn all_sources() -> Vec<Box<dyn Source>> {
-    vec![]
+    vec![
+        Box::new(ipapi::IpApi::default()),
+        Box::new(ipinfo::IpInfo::default()),
+        Box::new(ipsb::IpSb::default()),
+    ]
 }
 
 #[cfg(test)]
@@ -58,5 +62,15 @@ mod tests {
         assert_eq!(out.len(), 1);
         assert_eq!(out[0].0, "dummy");
         assert!(out[0].1.is_ok());
+    }
+
+    #[test]
+    fn all_sources_has_three() {
+        let s = all_sources();
+        let ids: Vec<&str> = s.iter().map(|x| x.id()).collect();
+        assert_eq!(ids.len(), 3);
+        assert!(ids.contains(&"ipapi"));
+        assert!(ids.contains(&"ipinfo"));
+        assert!(ids.contains(&"ipsb"));
     }
 }
