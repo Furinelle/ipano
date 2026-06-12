@@ -24,6 +24,7 @@ P9:三网回程路由(原生 traceroute)。
 - CN2 GIA/GT 的细分需进一步看 59.43 节点,当前统一标 CN2,后续可细化
 - socket I/O 无法 mock 单测,纯逻辑(报文构造/解析/线路识别/渲染/公网过滤)以 13 个单元测试覆盖,真发包靠集成运行验证
 - 默认关闭,需显式 `--route`(主动外发 ICMP + 需特权)
+- 文档:README 架构图补全 `probe/` 探测层(streaming/ai/mail/route)并新增 `--route` 输出示例
 
 [0.9.0]: https://github.com/Furinelle/ipano/releases/tag/v0.9.0
 

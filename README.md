@@ -68,6 +68,20 @@ ipano --timeout 5      # 单源超时(秒,默认 8)
 源状态  ✓ipapi ✓ipinfo ✓ipsb
 ```
 
+`--route` 三网回程路由示例(在有 root/`cap_net_raw` 的 VPS 上):
+
+```
+三网回程路由(traceroute)
+
+| 运营商 | 目标节点                 | 回程线路           | 质量 | 跳数 |
+|--------|--------------------------|--------------------|------|------|
+| 电信   | 北京电信 219.141.136.12  | 电信 CN2 (AS4809)  | 优质 | 12   |
+| 联通   | 北京联通 202.106.50.1    | 联通 169 (AS4837)  | 普通 | 14   |
+| 移动   | 北京移动 211.136.25.153  | 移动 CMI (AS58453) | 优质 | 11   |
+```
+
+(逐跳明细含每跳 IP/RTT/AS/归属;无特权时整条降级标注「需 root 运行」,不影响其余检测。)
+
 ## 能力边界
 
 `ipano` 跑在服务端,**无法**获取以下客户端浏览器行为(它们需要真实浏览器):浏览器指纹、WebRTC 泄露、DNS 泄露检测。报告中这类项会明确标注"CLI 不适用",不伪造数据。
@@ -97,14 +111,18 @@ ipano --timeout 5      # 单源超时(秒,默认 8)
 
 ```
 main → cli → orchestrator
-   ├─ egress     本机出口 IP 探测(多端点取众数)
-   ├─ fetch      共享 reqwest 客户端
-   ├─ sources/   每源一个文件,统一 Source trait,并发抓取
-   ├─ aggregate  按优先级合并多源 → MergedReport
-   └─ render/    terminal(彩色表)· json
+   ├─ egress       本机出口 IP 探测(多端点取众数)
+   ├─ fetch        共享 reqwest 客户端
+   ├─ sources/     IP 信息源:每源一个文件,统一 Source trait,并发抓取
+   │               ip-api · ipinfo · ip.sb · ip.net.coffee · ippure · ping0 · AbuseIPDB · IPQS
+   ├─ probe/       主动探测(从本机出口发起,与查询 IP 无关,各自只跑一次):
+   │               streaming/ai(解锁)· mail(SMTP 连通)· route(原生 traceroute 三网回程)
+   ├─ aggregate    按优先级合并多源 → MergedReport
+   ├─ heuristics   启发式风险结论
+   └─ render/      terminal(彩色表)· json · markdown
 ```
 
-新增数据源 = 加一个实现 `Source` trait 的文件并在 `all_sources()` 注册,不动其它代码。
+新增数据源 = 加一个实现 `Source` trait 的文件并在 `all_sources()` 注册;新增探测器 = 在 `probe/` 加一个模块并在编排处接线 —— 都不动其它代码。
 
 ## 致谢
 
