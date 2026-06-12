@@ -35,13 +35,18 @@ pub async fn run_all(
 }
 
 /// 默认启用的全部免 key 源(Task 9 恢复为三源)
-pub fn all_sources() -> Vec<Box<dyn Source>> {
+pub fn all_sources(ping0_token: Option<String>) -> Vec<Box<dyn Source>> {
+    // CLI --ping0-token 优先于环境变量;两者皆无则 ping0 运行期降级
+    let mut p = ping0::Ping0::default();
+    if let Some(t) = ping0_token {
+        if !t.is_empty() { p.token = Some(t); }
+    }
     vec![
+        Box::new(p),
         Box::new(ipapi::IpApi::default()),
         Box::new(ipinfo::IpInfo::default()),
         Box::new(ipsb::IpSb::default()),
         Box::new(netcoffee::NetCoffee::default()),
-        Box::new(ping0::Ping0::default()),
         Box::new(ippure::IpPure::default()),
         Box::new(abuseipdb::AbuseIpdb::default()),
         Box::new(ipqs::Ipqs::default()),
@@ -78,7 +83,7 @@ mod tests {
 
     #[test]
     fn all_sources_includes_netcoffee() {
-        let s = all_sources();
+        let s = all_sources(None);
         let ids: Vec<&str> = s.iter().map(|x| x.id()).collect();
         assert!(ids.contains(&"ipapi"));
         assert!(ids.contains(&"ipinfo"));

@@ -26,6 +26,10 @@ pub struct Args {
     /// 启用邮局连通性检测(TCP 连 SMTP 25/465/587 到主流邮局)
     #[arg(long)]
     pub mail: bool,
+    /// ping0 token(浏览器解 Turnstile 验证码后从 cookie 复制,60 秒内有效);
+    /// 不提供则 ping0 源自动降级。也可用环境变量 IPANO_PING0_TOKEN
+    #[arg(long)]
+    pub ping0_token: Option<String>,
     /// 关闭彩色
     #[arg(long)]
     pub no_color: bool,

@@ -46,7 +46,7 @@ async fn main() {
     };
 
     for ip in targets {
-        let srcs = sources::all_sources();
+        let srcs = sources::all_sources(args.ping0_token.clone());
         let results = sources::run_all(&client, ip, &srcs).await;
         let report = aggregate::merge(ip, results);
         if args.json {
