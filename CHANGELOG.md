@@ -4,6 +4,22 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.14.0] - 2026-06-13
+
+P14:--all 一键全跑 + 配置文件 ~/.config/ipano/config.toml。
+
+### 新增
+
+- **`-A` / `--all` 标志**:等价于同时传 `--probe --mail --route --dnsbl`,一条命令跑完所有探测模块
+- **配置文件支持**:自动读取 `~/.config/ipano/config.toml`(XDG_CONFIG_HOME 优先);可持久化 lang/timeout/no_color/ping0_token 以及 `[always]` 常开模块(probe/mail/route/dnsbl);CLI 参数优先级高于配置文件;文件不存在时静默跳过
+- `toml` 0.8 作为新依赖
+
+### 变更
+
+- `main.rs` 启动流程:先加载配置文件 → 解析 CLI → 合并 → 展开 `--all`
+
+[0.14.0]: https://github.com/Furinelle/ipano/releases/tag/v0.14.0
+
 ## [0.13.0] - 2026-06-13
 
 P13:DNSBL 黑名单检测(12 个主流邮件/滥用黑名单,并发 DNS 查询)。

@@ -5,6 +5,7 @@ mod aggregate;
 mod sources;
 mod render;
 mod cli;
+mod config;
 mod i18n;
 mod heuristics;
 mod probe;
@@ -14,8 +15,41 @@ use clap::Parser;
 
 #[tokio::main]
 async fn main() {
-    let args = cli::Args::parse();
-    let lang = i18n::Lang::parse(&args.lang);
+    // 先加载配置文件(~/.config/ipano/config.toml),再用 CLI 参数覆盖
+    let cfg = config::load();
+    let mut args = cli::Args::parse();
+
+    // 配置文件中的默认值(CLI 参数为 false/None 时生效)
+    if args.lang == "zh" {
+        if let Some(lang) = &cfg.lang { args.lang = lang.clone(); }
+    }
+    if args.timeout == 8 {
+        if let Some(t) = cfg.timeout { args.timeout = t; }
+    }
+    if !args.no_color {
+        if cfg.no_color == Some(true) { args.no_color = true; }
+    }
+    if args.ping0_token.is_none() {
+        args.ping0_token = cfg.ping0_token.clone();
+    }
+
+    // always 标志(配置文件中常开的模块)
+    if let Some(always) = &cfg.always {
+        if always.probe == Some(true) { args.probe = true; }
+        if always.mail  == Some(true) { args.mail  = true; }
+        if always.route == Some(true) { args.route = true; }
+        if always.dnsbl == Some(true) { args.dnsbl = true; }
+    }
+
+    // --all 展开:等价于 --probe --mail --route --dnsbl
+    if args.all {
+        args.probe = true;
+        args.mail  = true;
+        args.route = true;
+        args.dnsbl = true;
+    }
+
+    let lang   = i18n::Lang::parse(&args.lang);
     let client = fetch::build_client(args.timeout);
 
     let targets: Vec<IpAddr> = match &args.ip {
@@ -49,7 +83,7 @@ async fn main() {
     } else {
         Vec::new()
     };
-    // 三网回程路由从本机出口发起(仅 IPv4),与查询 IP 无关,只跑一次;无特权自动降级
+    // 三网回程路由从本机出口发起(仅 IPv4),只跑一次;无特权自动降级
     let routes = if args.route {
         probe::route::run_routes(&client, args.timeout).await
     } else {
@@ -68,9 +102,10 @@ async fn main() {
             Vec::new()
         };
 
-        let srcs = sources::all_sources(args.ping0_token.clone());
+        let srcs    = sources::all_sources(args.ping0_token.clone());
         let results = sources::run_all(&client, ip, &srcs).await;
-        let report = aggregate::merge(ip, results);
+        let report  = aggregate::merge(ip, results);
+
         if args.json {
             println!("{}", render::json::to_json(&report, &probes, &mail, &routes, &dnsbl));
         } else {

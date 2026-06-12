@@ -20,6 +20,9 @@ pub struct Args {
     /// 输出语言:zh(默认)或 en
     #[arg(long, default_value = "zh")]
     pub lang: String,
+    /// 一键全跑:等价于同时传 --probe --mail --route --dnsbl
+    #[arg(long, short = 'A')]
+    pub all: bool,
     /// 启用解锁检测(主动探测 Netflix/YouTube/ChatGPT,从本机出口发起)
     #[arg(long)]
     pub probe: bool,

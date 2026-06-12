@@ -9,7 +9,7 @@
 
 ## 当前状态
 
-**v0.13.0 — P13 DNSBL 黑名单检测**。`--dnsbl` 对当前查询 IPv4 并发检查 12 个主流邮件/滥用黑名单(Spamhaus ZEN / SpamCop / Barracuda / CBL / SORBS / UCEProtect / DroneBL 等),DNS 反向查询 4s 超时,结果 comfy-table 呈现。v0.12.0(P11)：`--probe` 从 3 项扩为 **19 项**(Netflix · YouTube Premium · Disney+ · HBO Max · Hulu · Prime Video · Bilibili CN · Bilibili HK/TW · AbemaTV · DAZN · BBC iPlayer · Crunchyroll · Paramount+ · Peacock · Discovery+ · Spotify · TVB Anywhere+ · Funimation · ChatGPT),新增 **Region** 地区列与 **Native/DNS** 类型列(探针机地区 vs 内容地区自动对比),终端输出改为 comfy-table 包边表。
+**v0.14.0 — P14 --all 一键全跑 + 配置文件**。`-A`/`--all` 同时启用 --probe/--mail/--route/--dnsbl；配置文件 `~/.config/ipano/config.toml` 支持持久化语言/超时/常开模块/ping0 token，CLI 参数优先覆盖。v0.13.0(P13)：`--dnsbl` 对当前查询 IPv4 并发检查 12 个主流邮件/滥用黑名单(Spamhaus ZEN / SpamCop / Barracuda / CBL / SORBS / UCEProtect / DroneBL 等),DNS 反向查询 4s 超时,结果 comfy-table 呈现。v0.12.0(P11)：`--probe` 从 3 项扩为 **19 项**(Netflix · YouTube Premium · Disney+ · HBO Max · Hulu · Prime Video · Bilibili CN · Bilibili HK/TW · AbemaTV · DAZN · BBC iPlayer · Crunchyroll · Paramount+ · Peacock · Discovery+ · Spotify · TVB Anywhere+ · Funimation · ChatGPT),新增 **Region** 地区列与 **Native/DNS** 类型列(探针机地区 vs 内容地区自动对比),终端输出改为 comfy-table 包边表。
 
 ## 功能(当前版本)
 
@@ -22,6 +22,8 @@
 - **西方欺诈库(可选 key)**:配置环境变量后启用 [AbuseIPDB](https://www.abuseipdb.com)(`IPANO_ABUSEIPDB_KEY`,滥用置信度)与 [IPQS](https://www.ipqualityscore.com)(`IPANO_IPQS_KEY`,欺诈分 + proxy/vpn/tor);未配置则自动跳过并标注,绝不伪造
 - **横向对比 + 启发式结论**:各源关键判定(代理/VPN/Tor/类型/风险分)并排对比,叠加启发式风险结论
 - **Markdown 导出 + 中英 i18n**:`--markdown` 输出可粘贴的报告,`--lang en` 切换英文
+- **一键全跑(`-A` / `--all`)**:同时启用 --probe/--mail/--route/--dnsbl,VPS 上线后一条命令完成全景体检
+- **配置文件(`~/.config/ipano/config.toml`)**:持久化 lang/timeout/no_color/ping0_token 及各模块常开(always.probe/mail/route/dnsbl);CLI 参数优先覆盖;文件不存在时静默跳过
 - **DNSBL 黑名单检测(`--dnsbl`)**:并发查询 12 个主流 DNSBL(Spamhaus ZEN/SpamCop/Barracuda/CBL/SORBS/UCEProtect L1-L2/DroneBL/PSBL/0Spam/Backscatterer);DNS 反向查询(IPv4 反转追加 DNSBL 域名),4s 超时;comfy-table 展示命中数与每条状态;`--markdown` pipe 表;`--json` 含 `dnsbl[]` 字段;IPv6 返回空跳过
 - **解锁检测(`--probe`)**:19 项并发探测(Netflix/Disney+/HBO Max/Hulu/Prime Video/Bilibili CN/HK·TW/AbemaTV/DAZN/BBC iPlayer/Crunchyroll/Paramount+/Peacock/Discovery+/Spotify/TVB Anywhere+/Funimation/YouTube Premium/ChatGPT);返回解锁状态、地区码(有 API 的服务)及 Native/DNS 类型(探针机地区 vs 内容地区对比);comfy-table 包边表呈现,`--markdown` 输出 pipe 表
 - **邮件端口连通性(`--mail`)**:6 协议矩阵 SMTP/SMTPS/POP3/POP3S/IMAP/IMAPS × 15 家邮局(Gmail/Outlook/Office365/Yahoo/Apple/QQ/163/Sina/Sohu/Yandex/Zoho/GMX/MailRU/AOL/FastMail),包边表呈现(VPS 25 端口常被封,一眼可见)
@@ -73,6 +75,7 @@ ipano --mail           # 邮件端口连通性(6 协议 × 15 家邮局矩阵)
 ipano --ping0-token <TOKEN>   # 复用浏览器解出的 ping0 token(60 秒内有效)
 ipano --route          # 三网回程路由(原生 traceroute,需 root/cap_net_raw)
 ipano --dnsbl          # DNSBL 黑名单检测(12 个主流列表,仅 IPv4)
+ipano -A               # 一键全跑(--probe + --mail + --route + --dnsbl)
 ipano --no-color       # 关闭彩色
 ipano --timeout 5      # 单源超时(秒,默认 8)
 ```
@@ -131,6 +134,7 @@ ipano --timeout 5      # 单源超时(秒,默认 8)
 | P6 | **解锁检测**(Netflix/YouTube/ChatGPT,`--probe`)| ✅ |
 | P11 | **流媒体解锁大扩**(19 服务 + Region + Native/DNS 区分,`--probe`)| ✅ |
 | P13 | **DNSBL 黑名单检测**(12 个主流列表,DNS 反向查询,`--dnsbl`)| ✅ |
+| P14 | **--all 一键全跑 + 配置文件**(`~/.config/ipano/config.toml`,`-A`)| ✅ |
 | P7 | **邮局连通性**(SMTP 25/465/587,`--mail`)| ✅ |
 | P8 | **ping0 token 手动复用**(`--ping0-token`,浏览器解验证码后提供,否则降级)| ✅ |
 | P9 | **三网回程路由**(原生 Rust traceroute + 三网节点表 + 回程线路识别 + 每跳 AS/geo 标注,`--route`,需 root,无特权降级)| ✅ |

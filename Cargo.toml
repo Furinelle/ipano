@@ -1,6 +1,6 @@
 [package]
 name = "ipano"
-version = "0.13.0"
+version = "0.14.0"
 edition = "2021"
 description = "一站式 IP 全景聚合检测工具"
 
@@ -16,6 +16,7 @@ async-trait = "0.1"
 thiserror = "1"
 futures = "0.3"
 libc = "0.2"
+toml = { version = "0.8", features = ["parse"] }
 
 [dev-dependencies]
 httpmock = "0.7"
