@@ -1,7 +1,8 @@
 use serde_json::json;
 use crate::aggregate::MergedReport;
+use crate::probe::ProbeResult;
 
-pub fn to_json(r: &MergedReport) -> String {
+pub fn to_json(r: &MergedReport, probes: &[ProbeResult]) -> String {
     let sources: Vec<_> = r.sources.iter().map(|s| json!({
         "id": s.id, "ok": s.ok, "error": s.error,
     })).collect();
@@ -35,6 +36,7 @@ pub fn to_json(r: &MergedReport) -> String {
         "abuseipdb_score": r.abuseipdb_score,
         "ipqs_score": r.ipqs_score,
         "sources": sources,
+        "probes": probes,
     });
     serde_json::to_string_pretty(&v).unwrap()
 }
@@ -51,7 +53,7 @@ mod tests {
         let mut d = SourceData::new("ipsb");
         d.asn = Some(13335);
         let report = merge(ip, vec![("ipsb".to_string(), Ok(d))]);
-        let s = to_json(&report);
+        let s = to_json(&report, &[]);
         assert!(s.contains("\"ip\""));
         assert!(s.contains("13335"));
     }
@@ -67,7 +69,7 @@ mod tests {
             label: "Suspicious".into(), confidence: 60, reasoning: "x".into(),
         });
         let report = merge(ip, vec![("netcoffee".to_string(), Ok(d))]);
-        let s = to_json(&report);
+        let s = to_json(&report, &[]);
         assert!(s.contains("trust_score"));
         assert!(s.contains("\"is_tor\""));
         assert!(s.contains("ai_verdict"));

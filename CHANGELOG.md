@@ -4,6 +4,26 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.6.0] - 2026-06-12
+
+P6:流媒体 + AI 解锁检测。
+
+### 新增
+
+- **解锁探测框架**:`Probe` trait + 并发 `run_all` + `ProbeResult{name,status,region}`,`ProbeStatus` 四态(Unlocked/Restricted/Blocked/Unknown)
+- **Netflix**:请求非自制剧标题页,200=完全解锁 / 404=仅自制剧 / 403=封锁
+- **YouTube Premium**:解析 `/premium` 页 countryCode 与可用性
+- **ChatGPT**:请求 OpenAI 合规端点,200=可用 / 403=受限地区封锁
+- **`--probe` 开关**:解锁检测从本机出口发起、与查询 IP 无关、只跑一次;贯通终端、Markdown、JSON(`probes` 数组)
+- 探测失败统一降级为 Unknown,不伪造
+
+### 说明
+
+- 解锁判定依赖第三方端点行为,可能随其改版漂移;分类逻辑独立成纯函数并单测,运行期失败即降级
+- 解锁检测默认关闭(主动外发请求 + 增加延迟),需显式 `--probe`
+
+[0.6.0]: https://github.com/Furinelle/ipano/releases/tag/v0.6.0
+
 ## [0.5.0] - 2026-06-12
 
 P5:横向对比表 + 启发式结论 + Markdown 导出 + 中英 i18n。
