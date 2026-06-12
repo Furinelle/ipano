@@ -11,8 +11,8 @@ use reqwest::Client;
 use serde::Deserialize;
 
 use super::{
-    build_echo_request, classify_line, is_public_v4, parse_icmp, targets, Carrier, Hop, IcmpKind,
-    RouteResult, MAX_HOPS,
+    build_echo_request, classify_entry, classify_line, is_public_v4, parse_icmp, targets, Carrier,
+    Hop, IcmpKind, RouteResult, MAX_HOPS,
 };
 
 /// 并发跑三网 traceroute,逐跳标注 AS/geo,识别回程线路类型。
@@ -49,6 +49,7 @@ pub async fn run_routes(client: &Client, timeout_secs: u64) -> Vec<RouteResult> 
                     target: ip,
                     hops,
                     line: super::LineType::Unknown,
+                    entry: super::LineType::Unknown,
                     degraded: None,
                 });
             }
@@ -58,6 +59,7 @@ pub async fn run_routes(client: &Client, timeout_secs: u64) -> Vec<RouteResult> 
                 target: ip,
                 hops: Vec::new(),
                 line: super::LineType::Unknown,
+                entry: super::LineType::Unknown,
                 degraded: Some(reason),
             }),
         }
@@ -84,6 +86,7 @@ pub async fn run_routes(client: &Client, timeout_secs: u64) -> Vec<RouteResult> 
             }
         }
         r.line = classify_line(r.carrier, &asns);
+        r.entry = classify_entry(&asns);
     }
 
     // 维持 电信→联通→移动 的稳定展示顺序
