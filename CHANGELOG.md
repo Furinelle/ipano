@@ -18,6 +18,10 @@ P9:三网回程路由(原生 traceroute)。
 - **优雅降级**:优先免特权 ICMP DGRAM socket(macOS 即可、Linux 受 `ping_group_range` 许可时可),失败回退 raw socket(需 root/`cap_net_raw`),两者皆不可用时该条降级标注「需 root 运行」,不阻塞其余功能
 - Cargo:新增 `libc` 依赖(raw/dgram socket 系统调用)
 
+### 修复
+
+- **三网 trace 串扰**:并发跑三条 traceroute 时,内核把 ICMP Time Exceeded 广播到多个 ICMP socket,各 trace 按相同 seq 互相抢收,导致三条路径混成一样(VPS 实测发现)。改为**串行**执行,且每条 trace 用**独立 seq 段**(base=i·64)隔离,只接受落在本段内的回包,杜绝跨 trace 与残留在途包混入
+
 ### 说明
 
 - **仅 IPv4**:P9 暂只做 IPv4 traceroute(ICMPv6 后续);线路识别结果均为启发式,仅供参考

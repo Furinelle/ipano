@@ -21,20 +21,17 @@ pub async fn run_routes(client: &Client, timeout_secs: u64) -> Vec<RouteResult> 
     // 发完全部 TTL 后的收包窗口;China 节点 RTT 较高,留 4-10s
     let window = Duration::from_secs(timeout_secs.clamp(4, 10));
 
-    // 三条 trace 并发(阻塞 socket 调用放进 spawn_blocking)
-    let handles: Vec<_> = targets()
-        .into_iter()
-        .map(|(carrier, name, ip)| {
-            tokio::task::spawn_blocking(move || (carrier, name, ip, trace_one(ip, MAX_HOPS, window)))
-        })
-        .collect();
-
+    // 串行跑三条 trace:并发会让内核把 Time Exceeded 广播到多个 ICMP socket,
+    // 各 trace 按相同 seq 互相抢收造成串扰(三条路径会混成一样)。串行 + 每条独立
+    // seq 段(base = i*64)双重隔离,杜绝跨 trace 与残留在途包混入。
     let mut routes: Vec<RouteResult> = Vec::new();
     let mut to_annotate: HashSet<Ipv4Addr> = HashSet::new();
 
-    for h in handles {
-        let (carrier, name, ip, res) = match h.await {
-            Ok(t) => t,
+    for (i, (carrier, name, ip)) in targets().into_iter().enumerate() {
+        let seq_base = (i as u16) * 64;
+        let w = window;
+        let res = match tokio::task::spawn_blocking(move || trace_one(ip, MAX_HOPS, w, seq_base)).await {
+            Ok(r) => r,
             Err(_) => continue,
         };
         match res {
@@ -160,7 +157,7 @@ async fn annotate(client: &Client, ips: &HashSet<Ipv4Addr>) -> HashMap<Ipv4Addr,
 
 /// 单目标 traceroute:成功返回逐跳(asn/geo 暂空,后续批量填),失败(无特权等)返回降级标记。
 #[cfg(unix)]
-fn trace_one(target: Ipv4Addr, max_hops: u8, window: Duration) -> Result<Vec<Hop>, String> {
+fn trace_one(target: Ipv4Addr, max_hops: u8, window: Duration, seq_base: u16) -> Result<Vec<Hop>, String> {
     use std::os::raw::c_int;
     use std::time::Instant;
 
@@ -180,11 +177,12 @@ fn trace_one(target: Ipv4Addr, max_hops: u8, window: Duration) -> Result<Vec<Hop
             std::mem::size_of::<libc::timeval>() as libc::socklen_t,
         );
 
-        let id = (std::process::id() & 0xffff) as u16;
+        // 每条 trace 用独立 id(防御性;Linux DGRAM 会改写 id,真正隔离靠 seq 段)
+        let id = (std::process::id() as u16).wrapping_add(seq_base);
         let dest = make_sockaddr(target);
 
-        // 先把 TTL 1..=max 全部发出(每包 seq = ttl),记录发送时刻
-        let mut send_times: BTreeMap<u16, Instant> = BTreeMap::new();
+        // 先把 TTL 1..=max 全部发出(seq = seq_base + ttl,各 trace seq 段互不重叠),按 ttl 记发送时刻
+        let mut send_times: BTreeMap<u8, Instant> = BTreeMap::new();
         for ttl in 1..=max_hops {
             let ttl_i = ttl as c_int;
             libc::setsockopt(
@@ -194,7 +192,7 @@ fn trace_one(target: Ipv4Addr, max_hops: u8, window: Duration) -> Result<Vec<Hop
                 &ttl_i as *const _ as *const libc::c_void,
                 std::mem::size_of::<c_int>() as libc::socklen_t,
             );
-            let pkt = build_echo_request(id, ttl as u16, 32);
+            let pkt = build_echo_request(id, seq_base + ttl as u16, 32);
             libc::sendto(
                 fd,
                 pkt.as_ptr() as *const libc::c_void,
@@ -203,13 +201,13 @@ fn trace_one(target: Ipv4Addr, max_hops: u8, window: Duration) -> Result<Vec<Hop
                 &dest as *const libc::sockaddr_in as *const libc::sockaddr,
                 std::mem::size_of::<libc::sockaddr_in>() as libc::socklen_t,
             );
-            send_times.insert(ttl as u16, Instant::now());
+            send_times.insert(ttl, Instant::now());
         }
 
-        // 在 window 内收包,按 seq 归位
+        // 在 window 内收包,按 ttl 归位;只认本条 trace 的 seq 段
         let deadline = Instant::now() + window;
-        let mut hops: BTreeMap<u16, Hop> = BTreeMap::new();
-        let mut dest_seq: Option<u16> = None;
+        let mut hops: BTreeMap<u8, Hop> = BTreeMap::new();
+        let mut dest_ttl: Option<u8> = None;
         let mut buf = [0u8; 1500];
         while Instant::now() < deadline {
             let mut from: libc::sockaddr_in = std::mem::zeroed();
@@ -228,36 +226,36 @@ fn trace_one(target: Ipv4Addr, max_hops: u8, window: Duration) -> Result<Vec<Hop
             let Some(info) = parse_icmp(&buf[..n as usize]) else {
                 continue;
             };
-            if info.seq < 1 {
+            // 只接受落在本条 trace seq 段内的回包,别条/残留在途包一律丢弃
+            if info.seq <= seq_base || info.seq > seq_base + max_hops as u16 {
                 continue;
             }
+            let ttl = (info.seq - seq_base) as u8;
             let from_ip = Ipv4Addr::from(u32::from_be(from.sin_addr.s_addr));
             let rtt = send_times
-                .get(&info.seq)
+                .get(&ttl)
                 .map(|t| t.elapsed().as_secs_f64() * 1000.0);
             match info.kind {
                 IcmpKind::EchoReply | IcmpKind::DestUnreachable => {
-                    hops.entry(info.seq)
-                        .or_insert_with(|| mk_hop(info.seq, from_ip, rtt));
-                    dest_seq = Some(dest_seq.map_or(info.seq, |d| d.min(info.seq)));
+                    hops.entry(ttl).or_insert_with(|| mk_hop(ttl, from_ip, rtt));
+                    dest_ttl = Some(dest_ttl.map_or(ttl, |d| d.min(ttl)));
                 }
                 IcmpKind::TimeExceeded => {
-                    hops.entry(info.seq)
-                        .or_insert_with(|| mk_hop(info.seq, from_ip, rtt));
+                    hops.entry(ttl).or_insert_with(|| mk_hop(ttl, from_ip, rtt));
                 }
                 IcmpKind::Other => {}
             }
             // 已到目标且其之前所有跳都已收齐 → 提前结束
-            if let Some(ds) = dest_seq {
-                if (1..=ds).all(|s| hops.contains_key(&s)) {
+            if let Some(dt) = dest_ttl {
+                if (1..=dt).all(|s| hops.contains_key(&s)) {
                     break;
                 }
             }
         }
         libc::close(fd);
 
-        let max_seq = dest_seq.unwrap_or(max_hops as u16);
-        let mut out: Vec<Hop> = (1..=max_seq)
+        let max_ttl = dest_ttl.unwrap_or(max_hops);
+        let mut out: Vec<Hop> = (1..=max_ttl)
             .map(|s| hops.get(&s).cloned().unwrap_or_else(|| empty_hop(s)))
             .collect();
         // 截掉最后一个有应答跳之后的连续无应答跳,避免一长串 *
@@ -270,14 +268,14 @@ fn trace_one(target: Ipv4Addr, max_hops: u8, window: Duration) -> Result<Vec<Hop
 }
 
 #[cfg(not(unix))]
-fn trace_one(_target: Ipv4Addr, _max_hops: u8, _window: Duration) -> Result<Vec<Hop>, String> {
+fn trace_one(_target: Ipv4Addr, _max_hops: u8, _window: Duration, _seq_base: u16) -> Result<Vec<Hop>, String> {
     Err("need_privilege".to_string())
 }
 
 #[cfg(unix)]
-fn mk_hop(seq: u16, addr: Ipv4Addr, rtt_ms: Option<f64>) -> Hop {
+fn mk_hop(ttl: u8, addr: Ipv4Addr, rtt_ms: Option<f64>) -> Hop {
     Hop {
-        ttl: seq as u8,
+        ttl,
         addr: Some(addr),
         rtt_ms,
         asn: None,
@@ -288,9 +286,9 @@ fn mk_hop(seq: u16, addr: Ipv4Addr, rtt_ms: Option<f64>) -> Hop {
 }
 
 #[cfg(unix)]
-fn empty_hop(seq: u16) -> Hop {
+fn empty_hop(ttl: u8) -> Hop {
     Hop {
-        ttl: seq as u8,
+        ttl,
         addr: None,
         rtt_ms: None,
         asn: None,
