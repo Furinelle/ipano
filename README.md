@@ -23,7 +23,7 @@
 - **横向对比 + 启发式结论**:各源关键判定(代理/VPN/Tor/类型/风险分)并排对比,叠加启发式风险结论
 - **Markdown 导出 + 中英 i18n**:`--markdown` 输出可粘贴的报告,`--lang en` 切换英文
 - **解锁检测(`--probe`)**:从本机出口主动探测 Netflix、YouTube Premium、ChatGPT 的解锁状态与地区,失败标注未知不伪造
-- **邮局连通性(`--mail`)**:TCP 连 SMTP 25/465/587 探测到 Gmail/Outlook/QQ/Yahoo/Apple 的端口连通(VPS 25 端口常被封,一眼可见)
+- **邮件端口连通性(`--mail`)**:6 协议矩阵 SMTP/SMTPS/POP3/POP3S/IMAP/IMAPS × 15 家邮局(Gmail/Outlook/Office365/Yahoo/Apple/QQ/163/Sina/Sohu/Yandex/Zoho/GMX/MailRU/AOL/FastMail),包边表呈现(VPS 25 端口常被封,一眼可见)
 - **三网回程路由(`--route`)**:原生 Rust ICMP traceroute 到 电信/联通/移动 北京参考节点,每跳复用 ip-api 标注 AS/归属,按骨干 ASN(CN2 AS4809 / 163 AS4134 / 169 AS4837 / 9929 / CMI AS58453 / CMNET AS9808 等)启发式识别回程线路类型与质量档(优质/普通);需 root/`cap_net_raw`,无特权自动降级
 
 ## 安装
@@ -68,7 +68,7 @@ ipano --json 8.8.8.8   # 输出 JSON
 ipano --markdown 1.1.1.1   # 输出 Markdown(含各源对比表 + 启发式结论)
 ipano --lang en        # 英文输出(结论/对比/Markdown)
 ipano --probe          # 解锁检测(Netflix/YouTube/ChatGPT)
-ipano --mail           # 邮局连通性(SMTP 25/465/587)
+ipano --mail           # 邮件端口连通性(6 协议 × 15 家邮局矩阵)
 ipano --ping0-token <TOKEN>   # 复用浏览器解出的 ping0 token(60 秒内有效)
 ipano --route          # 三网回程路由(原生 traceroute,需 root/cap_net_raw)
 ipano --no-color       # 关闭彩色

@@ -64,7 +64,14 @@ async fn main() {
                 print!("{}", render::terminal::render(&report, args.no_color, lang));
             }
             if !probes.is_empty() { println!("\n{}", probe::render_section(&probes, lang)); }
-            if !mail.is_empty() { println!("\n{}", probe::mail::render_section(&mail, lang)); }
+            if !mail.is_empty() {
+                let s = if args.markdown {
+                    probe::mail::render_section(&mail, lang)
+                } else {
+                    probe::mail::render_terminal(&mail, lang)
+                };
+                println!("\n{}", s);
+            }
             if !routes.is_empty() {
                 // 终端用 comfy-table 包边表,--markdown 用 pipe 表
                 let s = if args.markdown {

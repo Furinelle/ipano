@@ -4,6 +4,18 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.10.0] - 2026-06-13
+
+P12:邮件端口全面化。
+
+### 新增
+
+- **6 协议矩阵**:`--mail` 从 SMTP 3 端口 × 5 家 扩为 **SMTP/SMTPS/POP3/POP3S/IMAP/IMAPS × 15 家**(Gmail/Outlook/Office365/Yahoo/Apple/QQ/163/Sina/Sohu/Yandex/Zoho/GMX/MailRU/AOL/FastMail);各邮局按 smtp/pop/imap 主机分别探测,不提供某协议者对应格标 `—`
+- **comfy-table 包边矩阵**:`--mail` 终端输出改用与主报告/`--route` 一致的包边表;`--markdown` 仍输出 pipe 表
+- JSON `mail[]` 结构调整为 `{provider, protocols:[{proto, port, open}]}`
+
+[0.10.0]: https://github.com/Furinelle/ipano/releases/tag/v0.10.0
+
 ## [0.9.1] - 2026-06-12
 
 P9 增强:国际入境线识别 + 终端表格化。
