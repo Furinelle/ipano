@@ -9,7 +9,7 @@
 
 ## 当前状态
 
-**v0.11.0 — P10 三网回程深化**。`--route` 扩为 电信/联通/移动 × 北京/上海/广州/成都 = 12 个骨干节点;电信 CN2 细分 GIA/GT(看 `59.43`/`202.97` 段),骨干 ASN 表补全(含纠正 AS58807 → 移动 CMIN2 精品)。引擎改为**单 ICMP socket + 每目标独立 seq 段**,12 条 trace 一次性并发探测,总耗时从约 12×window 压到约 1 个 window。优先用免特权 ICMP DGRAM socket(macOS 即开即用),Linux 需 root/`cap_net_raw`,无特权时该模块自动降级,不影响其余检测。
+**v0.12.0 — P11 流媒体解锁大扩**。`--probe` 从 3 项扩为 **19 项**(Netflix · YouTube Premium · Disney+ · HBO Max · Hulu · Prime Video · Bilibili CN · Bilibili HK/TW · AbemaTV · DAZN · BBC iPlayer · Crunchyroll · Paramount+ · Peacock · Discovery+ · Spotify · TVB Anywhere+ · Funimation · ChatGPT),新增 **Region** 地区列与 **Native/DNS** 类型列(探针机地区 vs 内容地区自动对比),终端输出改为 comfy-table 包边表。
 
 ## 功能(当前版本)
 
@@ -22,7 +22,7 @@
 - **西方欺诈库(可选 key)**:配置环境变量后启用 [AbuseIPDB](https://www.abuseipdb.com)(`IPANO_ABUSEIPDB_KEY`,滥用置信度)与 [IPQS](https://www.ipqualityscore.com)(`IPANO_IPQS_KEY`,欺诈分 + proxy/vpn/tor);未配置则自动跳过并标注,绝不伪造
 - **横向对比 + 启发式结论**:各源关键判定(代理/VPN/Tor/类型/风险分)并排对比,叠加启发式风险结论
 - **Markdown 导出 + 中英 i18n**:`--markdown` 输出可粘贴的报告,`--lang en` 切换英文
-- **解锁检测(`--probe`)**:从本机出口主动探测 Netflix、YouTube Premium、ChatGPT 的解锁状态与地区,失败标注未知不伪造
+- **解锁检测(`--probe`)**:19 项并发探测(Netflix/Disney+/HBO Max/Hulu/Prime Video/Bilibili CN/HK·TW/AbemaTV/DAZN/BBC iPlayer/Crunchyroll/Paramount+/Peacock/Discovery+/Spotify/TVB Anywhere+/Funimation/YouTube Premium/ChatGPT);返回解锁状态、地区码(有 API 的服务)及 Native/DNS 类型(探针机地区 vs 内容地区对比);comfy-table 包边表呈现,`--markdown` 输出 pipe 表
 - **邮件端口连通性(`--mail`)**:6 协议矩阵 SMTP/SMTPS/POP3/POP3S/IMAP/IMAPS × 15 家邮局(Gmail/Outlook/Office365/Yahoo/Apple/QQ/163/Sina/Sohu/Yandex/Zoho/GMX/MailRU/AOL/FastMail),包边表呈现(VPS 25 端口常被封,一眼可见)
 - **三网回程路由(`--route`)**:原生 Rust ICMP traceroute 到 电信/联通/移动 × 北京/上海/广州/成都 12 个参考节点(单 socket 并行),每跳复用 ip-api 标注 AS/归属,按骨干 ASN(CN2 AS4809 / 163 AS4134 / 169 AS4837 / 9929 / CMIN2 AS58807 / CMI AS58453 / CMNET AS9808 等)启发式识别回程线路类型与质量档(优质/普通),并对电信 CN2 细分 GIA/GT;需 root/`cap_net_raw`,无特权自动降级
 
@@ -67,7 +67,7 @@ ipano -6               # 仅 IPv6
 ipano --json 8.8.8.8   # 输出 JSON
 ipano --markdown 1.1.1.1   # 输出 Markdown(含各源对比表 + 启发式结论)
 ipano --lang en        # 英文输出(结论/对比/Markdown)
-ipano --probe          # 解锁检测(Netflix/YouTube/ChatGPT)
+ipano --probe          # 解锁检测(19 服务,含 Region + Native/DNS 类型)
 ipano --mail           # 邮件端口连通性(6 协议 × 15 家邮局矩阵)
 ipano --ping0-token <TOKEN>   # 复用浏览器解出的 ping0 token(60 秒内有效)
 ipano --route          # 三网回程路由(原生 traceroute,需 root/cap_net_raw)
@@ -127,6 +127,7 @@ ipano --timeout 5      # 单源超时(秒,默认 8)
 | P4 | **西方欺诈库**(AbuseIPDB + IPQS,key 可选,无 key 自动跳过)| ✅ |
 | P5 | **横向对比表 + 启发式结论 + markdown 导出 + 中英 i18n** | ✅ |
 | P6 | **解锁检测**(Netflix/YouTube/ChatGPT,`--probe`)| ✅ |
+| P11 | **流媒体解锁大扩**(19 服务 + Region + Native/DNS 区分,`--probe`)| ✅ |
 | P7 | **邮局连通性**(SMTP 25/465/587,`--mail`)| ✅ |
 | P8 | **ping0 token 手动复用**(`--ping0-token`,浏览器解验证码后提供,否则降级)| ✅ |
 | P9 | **三网回程路由**(原生 Rust traceroute + 三网节点表 + 回程线路识别 + 每跳 AS/geo 标注,`--route`,需 root,无特权降级)| ✅ |

@@ -1,6 +1,6 @@
 [package]
 name = "ipano"
-version = "0.11.0"
+version = "0.12.0"
 edition = "2021"
 description = "一站式 IP 全景聚合检测工具"
 

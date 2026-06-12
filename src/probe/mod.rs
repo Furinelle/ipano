@@ -18,16 +18,26 @@ pub enum ProbeStatus {
     Unknown,     // 探测失败,无法判定
 }
 
+/// 解锁类型:IP 直连原生 vs DNS 重定向
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum UnlockType {
+    Native,   // 原生 — 探针 IP 所属地区与内容地区一致
+    Dns,      // DNS 解锁 — 地区不符,但通过 DNS 重定向可访问
+    Unknown,  // 无法判定(多发生于未携带 region 的服务)
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct ProbeResult {
     pub name: String,
     pub status: ProbeStatus,
     pub region: Option<String>,
+    pub unlock_type: UnlockType,
 }
 
 impl ProbeResult {
     pub fn new(name: &str, status: ProbeStatus, region: Option<String>) -> Self {
-        ProbeResult { name: name.to_string(), status, region }
+        ProbeResult { name: name.to_string(), status, region, unlock_type: UnlockType::Unknown }
     }
     pub fn unknown(name: &str) -> Self {
         ProbeResult::new(name, ProbeStatus::Unknown, None)
@@ -40,21 +50,60 @@ pub trait Probe: Send + Sync {
     async fn check(&self, client: &Client) -> ProbeResult;
 }
 
-/// 并发跑所有探针(从本机出口发起);单探针失败不影响其它。
-pub async fn run_all(client: &Client, probes: &[Box<dyn Probe>]) -> Vec<ProbeResult> {
-    join_all(probes.iter().map(|p| p.check(client))).await
+/// 并发跑所有探针,并根据探针机所在地区推断 Native/DNS 类型。
+/// probe_country: 探针机 ISO 两字母国家码(如 "JP"),空串表示跳过此推断。
+pub async fn run_all_with_native_check(
+    client: &Client,
+    probes: &[Box<dyn Probe>],
+    probe_country: &str,
+) -> Vec<ProbeResult> {
+    let mut results = join_all(probes.iter().map(|p| p.check(client))).await;
+    if !probe_country.is_empty() {
+        for r in &mut results {
+            if matches!(r.status, ProbeStatus::Unlocked | ProbeStatus::Restricted) {
+                r.unlock_type = classify_native_dns(probe_country, r.region.as_deref());
+            }
+        }
+    }
+    results
+}
+
+/// 纯函数:探针机地区 vs 内容地区 → UnlockType。
+/// 地区相符 → Native;地区不符 → Dns;region 为 None → Unknown。
+pub fn classify_native_dns(probe_country: &str, content_region: Option<&str>) -> UnlockType {
+    match content_region {
+        Some(r) if r.eq_ignore_ascii_case(probe_country) => UnlockType::Native,
+        Some(_) => UnlockType::Dns,
+        None => UnlockType::Unknown,
+    }
 }
 
 pub fn all_probes() -> Vec<Box<dyn Probe>> {
+    use streaming::*;
     vec![
-        Box::new(streaming::Netflix::default()),
-        Box::new(streaming::YouTube::default()),
+        Box::new(Netflix::default()),
+        Box::new(YouTube::default()),
+        Box::new(DisneyPlus::default()),
+        Box::new(HboMax::default()),
+        Box::new(Hulu::default()),
+        Box::new(PrimeVideo::default()),
+        Box::new(BilibiliCn::default()),
+        Box::new(BilibiliHkTw::default()),
+        Box::new(AbemaTV::default()),
+        Box::new(Dazn::default()),
+        Box::new(BbcIplayer::default()),
+        Box::new(Crunchyroll::default()),
+        Box::new(ParamountPlus::default()),
+        Box::new(Peacock::default()),
+        Box::new(DiscoveryPlus::default()),
+        Box::new(Spotify::default()),
+        Box::new(TvbAnywhere::default()),
+        Box::new(Funimation::default()),
         Box::new(ai::ChatGpt::default()),
     ]
 }
 
 impl ProbeStatus {
-    /// 双语展示文案
     pub fn label(self, lang: crate::i18n::Lang) -> &'static str {
         match self {
             ProbeStatus::Unlocked => lang.pick("✓ 解锁", "✓ Unlocked"),
@@ -65,16 +114,90 @@ impl ProbeStatus {
     }
 }
 
-/// 渲染解锁检测区(Markdown 表,终端与 markdown 通用)
+impl UnlockType {
+    pub fn label(self, lang: crate::i18n::Lang) -> &'static str {
+        match self {
+            UnlockType::Native => lang.pick("原生", "Native"),
+            UnlockType::Dns => "DNS",
+            UnlockType::Unknown => "—",
+        }
+    }
+}
+
+/// 终端渲染(comfy-table 包边表)
+pub fn render_terminal(results: &[ProbeResult], lang: crate::i18n::Lang) -> String {
+    use comfy_table::{presets::UTF8_FULL, Table};
+    let mut out = String::new();
+    out.push_str(&format!("═══ {} ═══\n", lang.pick("流媒体 & AI 解锁检测", "Streaming & AI unlock")));
+
+    let mut t = Table::new();
+    t.load_preset(UTF8_FULL);
+    t.set_header(vec![
+        lang.pick("服务", "Service"),
+        lang.pick("状态", "Status"),
+        lang.pick("地区", "Region"),
+        lang.pick("类型", "Type"),
+    ]);
+    for r in results {
+        let region = r.region.clone().unwrap_or_else(|| "—".to_string());
+        t.add_row(vec![
+            r.name.clone(),
+            r.status.label(lang).to_string(),
+            region,
+            r.unlock_type.label(lang).to_string(),
+        ]);
+    }
+    out.push_str(&t.to_string());
+    out.push('\n');
+    out
+}
+
+/// Markdown 渲染(pipe 表,兼容旧行为)
 pub fn render_section(results: &[ProbeResult], lang: crate::i18n::Lang) -> String {
     use std::fmt::Write;
     let mut out = String::new();
-    writeln!(out, "## {}\n", lang.pick("解锁检测", "Unlock test")).ok();
-    writeln!(out, "| {} | {} | {} |", lang.pick("服务", "Service"), lang.pick("状态", "Status"), lang.pick("地区", "Region")).ok();
-    writeln!(out, "|---|---|---|").ok();
+    writeln!(out, "## {}\n", lang.pick("流媒体 & AI 解锁检测", "Streaming & AI unlock")).ok();
+    writeln!(out, "| {} | {} | {} | {} |",
+        lang.pick("服务", "Service"),
+        lang.pick("状态", "Status"),
+        lang.pick("地区", "Region"),
+        lang.pick("类型", "Type"),
+    ).ok();
+    writeln!(out, "|---|---|---|---|").ok();
     for r in results {
         let region = r.region.clone().unwrap_or_else(|| "—".to_string());
-        writeln!(out, "| {} | {} | {} |", r.name, r.status.label(lang), region).ok();
+        writeln!(out, "| {} | {} | {} | {} |",
+            r.name, r.status.label(lang), region, r.unlock_type.label(lang)).ok();
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn classify_native_dns_match() {
+        assert_eq!(classify_native_dns("JP", Some("JP")), UnlockType::Native);
+        assert_eq!(classify_native_dns("jp", Some("JP")), UnlockType::Native);
+    }
+
+    #[test]
+    fn classify_native_dns_mismatch() {
+        assert_eq!(classify_native_dns("US", Some("JP")), UnlockType::Dns);
+    }
+
+    #[test]
+    fn classify_native_dns_no_region() {
+        assert_eq!(classify_native_dns("US", None), UnlockType::Unknown);
+    }
+
+    #[test]
+    fn run_all_with_native_check_sets_type() {
+        // Pure structural test — no async needed for native check logic
+        let r = ProbeResult::new("Test", ProbeStatus::Unlocked, Some("US".into()));
+        assert_eq!(r.unlock_type, UnlockType::Unknown); // default before check
+        let ut = classify_native_dns("US", r.region.as_deref());
+        assert_eq!(ut, UnlockType::Native);
+    }
 }

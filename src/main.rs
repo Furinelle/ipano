@@ -33,9 +33,14 @@ async fn main() {
         }
     };
 
-    // 解锁检测/邮局连通性从本机出口发起,与查询 IP 无关,只跑一次
+    // 解锁检测从本机出口发起,只跑一次;先探测本机国家码用于 Native/DNS 区分
+    let probe_country = if args.probe {
+        egress::detect_country(&client).await.unwrap_or_default()
+    } else {
+        String::new()
+    };
     let probes = if args.probe {
-        probe::run_all(&client, &probe::all_probes()).await
+        probe::run_all_with_native_check(&client, &probe::all_probes(), &probe_country).await
     } else {
         Vec::new()
     };
@@ -63,7 +68,14 @@ async fn main() {
             } else {
                 print!("{}", render::terminal::render(&report, args.no_color, lang));
             }
-            if !probes.is_empty() { println!("\n{}", probe::render_section(&probes, lang)); }
+            if !probes.is_empty() {
+                let s = if args.markdown {
+                    probe::render_section(&probes, lang)
+                } else {
+                    probe::render_terminal(&probes, lang)
+                };
+                println!("\n{}", s);
+            }
             if !mail.is_empty() {
                 let s = if args.markdown {
                     probe::mail::render_section(&mail, lang)

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::net::IpAddr;
 use reqwest::Client;
+use serde_json::Value;
 
 const V4_ENDPOINTS: [&str; 2] = ["https://api-ipv4.ip.sb/ip", "https://ipv4.icanhazip.com"];
 const V6_ENDPOINTS: [&str; 2] = ["https://api-ipv6.ip.sb/ip", "https://ipv6.icanhazip.com"];
@@ -34,6 +35,14 @@ pub async fn detect(client: &Client) -> (Option<IpAddr>, Option<IpAddr>) {
     let v4 = discover(client, &V4_ENDPOINTS).await;
     let v6 = discover(client, &V6_ENDPOINTS).await;
     (v4, v6)
+}
+
+/// 探测本机出口 IP 的 ISO 国家码(用于流媒体 Native/DNS 区分)。
+/// 使用 ip.sb geoip API;失败返回 None。
+pub async fn detect_country(client: &Client) -> Option<String> {
+    let resp = client.get("https://api.ip.sb/geoip").send().await.ok()?;
+    let json: Value = resp.json().await.ok()?;
+    json["country_code"].as_str().map(|s| s.to_string())
 }
 
 #[cfg(test)]

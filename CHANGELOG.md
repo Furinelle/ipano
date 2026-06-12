@@ -4,6 +4,25 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.12.0] - 2026-06-13
+
+P11:流媒体解锁大扩(18 服务 + Region + Native/DNS 区分)。
+
+### 新增
+
+- **18 流媒体服务**:`--probe` 从 Netflix/YouTube Premium/ChatGPT 三项扩为完整矩阵:Netflix · YouTube Premium · Disney+ · HBO Max · Hulu · Prime Video · Bilibili CN · Bilibili HK/TW · AbemaTV · DAZN · BBC iPlayer · Crunchyroll · Paramount+ · Peacock · Discovery+ · Spotify · TVB Anywhere+ · Funimation · ChatGPT(共 19 项)
+- **Region 地区列**:有 JSON API 的服务(AbemaTV/Bilibili/DAZN/Netflix/YouTube Premium 等)自动提取并展示两字母 ISO 国家码
+- **Native/DNS 类型列**:探针机所在地区(ip.sb geoip 探测)与内容地区对比——一致为「原生/Native」,不一致为「DNS 解锁」,无地区信息为「—」
+- **comfy-table 终端渲染**:终端输出改用与 `--route` 一致的 UTF8_FULL 包边表(4 列:服务/状态/地区/类型);`--markdown` 仍输出 pipe 表
+
+### 变更
+
+- `ProbeResult` 新增 `unlock_type` 字段(JSON 输出同步含此字段)
+- 终端渲染路径:原 `render_section`(Markdown) 分裂为 `render_terminal`(comfy-table)+ `render_section`(Markdown)
+- `Probe` trait 简化:移除未使用的 `hostname()` 默认方法
+
+[0.12.0]: https://github.com/Furinelle/ipano/releases/tag/v0.12.0
+
 ## [0.11.0] - 2026-06-13
 
 P10:三网回程深化(多城市 + 骨干补全 + CN2 细分 + 单 socket 提速)。
