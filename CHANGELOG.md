@@ -4,6 +4,22 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.8.0] - 2026-06-12
+
+P8:ping0 token 手动复用。
+
+### 新增
+
+- **`--ping0-token` CLI 选项**:在浏览器解开 ping0 的 Cloudflare Turnstile 验证码后,把 `token` cookie 值传入即可复用(60 秒内有效),优先级高于环境变量 `IPANO_PING0_TOKEN`;`all_sources` 接受该 token 并注入 ping0 源
+- 未提供或失效时 ping0 源自动降级(NeedsKey/ChallengeFailed),不影响其它源
+
+### 说明
+
+- **不实现自动绕验证码**:headless 浏览器自动通过 Turnstile 属绕过 bot 检测,不在本工具范围。仅支持"人工解验证码 + 复用其产出的 token"这一合法路径
+- token 仅作运行期凭证,不落盘
+
+[0.8.0]: https://github.com/Furinelle/ipano/releases/tag/v0.8.0
+
 ## [0.7.0] - 2026-06-12
 
 P7:邮局连通性检测。
