@@ -4,6 +4,25 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.5.0] - 2026-06-12
+
+P5:横向对比表 + 启发式结论 + Markdown 导出 + 中英 i18n。
+
+### 新增
+
+- **各源横向对比**:`MergedReport` 保留各成功源原始数据(`raw`),并排呈现每源的代理/VPN/Tor/类型/风险分判定
+- **启发式结论**:`heuristics::conclude` 综合代理/VPN/Tor、IP 类型、纯净度、欺诈/滥用分给出风险结论(双语)
+- **Markdown 导出**:`--markdown` 输出含基础信息、对比表、结论、源状态的可粘贴报告
+- **i18n**:`--lang zh|en`(默认 zh),贯通终端结论区、对比表、Markdown
+- 终端报告新增"启发式结论"区
+
+### 说明
+
+- 启发式阈值:IPQS/ippure 欺诈分 ≥75、AbuseIPDB 置信度 ≥50、ping0 风控值 ≥75 视为高风险;纯净度 <40 视为偏低
+- 基础信息表标签暂保持中文;i18n 当前覆盖结论、对比表与 Markdown 输出
+
+[0.5.0]: https://github.com/Furinelle/ipano/releases/tag/v0.5.0
+
 ## [0.4.0] - 2026-06-12
 
 P4:西方欺诈库(key 可选)。

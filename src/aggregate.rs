@@ -42,6 +42,8 @@ pub struct MergedReport {
     pub abuseipdb_score: Option<i64>,
     pub ipqs_score: Option<i64>,
     pub sources: Vec<SourceStatus>,
+    /// 各成功源的原始数据(供横向对比表)
+    pub raw: Vec<SourceData>,
 }
 
 pub fn merge(ip: IpAddr, results: Vec<(String, SourceResult)>) -> MergedReport {
@@ -75,6 +77,7 @@ pub fn merge(ip: IpAddr, results: Vec<(String, SourceResult)>) -> MergedReport {
     pick!(trust_score); pick!(risk_score); pick!(abuser_score); pick!(rep_threat);
     pick!(ai_verdict); pick!(is_abuser); pick!(is_crawler); pick!(is_mobile); pick!(is_residential);
     pick!(fraud_score); pick!(abuseipdb_score); pick!(ipqs_score);
+    m.raw = ok;
     m
 }
 

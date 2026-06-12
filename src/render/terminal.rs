@@ -1,12 +1,14 @@
 use comfy_table::{Table, presets::UTF8_FULL};
 use owo_colors::OwoColorize;
 use crate::aggregate::MergedReport;
+use crate::i18n::Lang;
+use crate::heuristics::conclude;
 
 fn dash(s: &Option<String>) -> String {
     s.clone().unwrap_or_else(|| "—".to_string())
 }
 
-pub fn render(r: &MergedReport, no_color: bool) -> String {
+pub fn render(r: &MergedReport, no_color: bool, lang: Lang) -> String {
     let mut out = String::new();
     let ip = r.ip.map(|x| x.to_string()).unwrap_or_default();
     let header = format!("═══ IP 全景报告  {} ═══", ip);
@@ -47,11 +49,19 @@ pub fn render(r: &MergedReport, no_color: bool) -> String {
         out.push('\n');
     }
 
+    // —— 启发式结论 ——
+    let title = lang.pick("启发式结论", "Heuristic verdict");
+    out.push_str(&if no_color { title.to_string() } else { title.bold().to_string() });
+    out.push('\n');
+    for line in conclude(r, lang) {
+        out.push_str(&format!("  • {}\n", line));
+    }
+
     let status: Vec<String> = r.sources.iter().map(|s| {
         let mark = if s.ok { "✓" } else { "✗" };
         format!("{}{}", mark, s.id)
     }).collect();
-    out.push_str(&format!("源状态  {}\n", status.join(" ")));
+    out.push_str(&format!("{}  {}\n", lang.pick("源状态", "Sources"), status.join(" ")));
     out
 }
 
@@ -93,7 +103,7 @@ mod tests {
             ("ipsb".to_string(), Ok(d)),
             ("ipapi".to_string(), Err(crate::model::SourceError::Timeout)),
         ]);
-        let out = render(&report, true);
+        let out = render(&report, true, crate::i18n::Lang::Zh);
         assert!(out.contains("1.1.1.1"));
         assert!(out.contains("13335"));
         assert!(out.contains("ipsb"));
@@ -111,7 +121,7 @@ mod tests {
             label: "Suspicious".into(), confidence: 60, reasoning: "front possible".into(),
         });
         let report = merge(ip, vec![("netcoffee".to_string(), Ok(d))]);
-        let out = render(&report, true);
+        let out = render(&report, true, crate::i18n::Lang::Zh);
         assert!(out.contains("纯净度") || out.contains("可信"));
         assert!(out.contains("41"));
         assert!(out.contains("Suspicious"));

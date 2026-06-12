@@ -14,6 +14,12 @@ pub struct Args {
     /// 输出 JSON
     #[arg(long)]
     pub json: bool,
+    /// 输出 Markdown(含各源对比表 + 启发式结论)
+    #[arg(long)]
+    pub markdown: bool,
+    /// 输出语言:zh(默认)或 en
+    #[arg(long, default_value = "zh")]
+    pub lang: String,
     /// 关闭彩色
     #[arg(long)]
     pub no_color: bool,

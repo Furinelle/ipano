@@ -16,6 +16,8 @@ use crate::model::SourceResult;
 #[async_trait]
 pub trait Source: Send + Sync {
     fn id(&self) -> &'static str;
+    /// 该源所需的环境变量名(用于未来配置提示);当前仅作元数据
+    #[allow(dead_code)]
     fn needs_key(&self) -> Option<&'static str> { None }
     async fn fetch(&self, client: &Client, ip: IpAddr) -> SourceResult;
 }
