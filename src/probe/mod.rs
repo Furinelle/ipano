@@ -125,11 +125,14 @@ impl UnlockType {
     }
 }
 
-/// 终端渲染(comfy-table 包边表)
-pub fn render_terminal(results: &[ProbeResult], lang: crate::i18n::Lang) -> String {
-    use comfy_table::{presets::UTF8_FULL, Table};
+/// 终端渲染(comfy-table 包边表;按状态着色,no_color 时退化为纯文本)
+pub fn render_terminal(results: &[ProbeResult], lang: crate::i18n::Lang, no_color: bool) -> String {
+    use comfy_table::{presets::UTF8_FULL, Cell, Color, Table};
+    let unlocked = results.iter().filter(|r| r.status == ProbeStatus::Unlocked).count();
     let mut out = String::new();
-    out.push_str(&format!("═══ {} ═══\n", lang.pick("流媒体 & AI 解锁检测", "Streaming & AI unlock")));
+    out.push_str(&format!("═══ {} ({}/{}) ═══\n",
+        lang.pick("流媒体 & AI 解锁检测", "Streaming & AI unlock"),
+        unlocked, results.len()));
 
     let mut t = Table::new();
     t.load_preset(UTF8_FULL);
@@ -141,16 +144,30 @@ pub fn render_terminal(results: &[ProbeResult], lang: crate::i18n::Lang) -> Stri
     ]);
     for r in results {
         let region = r.region.clone().unwrap_or_else(|| "—".to_string());
-        t.add_row(vec![
-            r.name.clone(),
-            r.status.label(lang).to_string(),
-            region,
-            r.unlock_type.label(lang).to_string(),
-        ]);
+        let status = Cell::new(r.status.label(lang));
+        let status = if no_color { status } else { status.fg(status_color(r.status)) };
+        let utype = Cell::new(r.unlock_type.label(lang));
+        let utype = match (no_color, r.unlock_type) {
+            (false, UnlockType::Native) => utype.fg(Color::Green),
+            (false, UnlockType::Dns) => utype.fg(Color::Yellow),
+            _ => utype,
+        };
+        t.add_row(vec![Cell::new(&r.name), status, Cell::new(region), utype]);
     }
     out.push_str(&t.to_string());
     out.push('\n');
     out
+}
+
+/// 状态 → comfy-table 颜色
+fn status_color(s: ProbeStatus) -> comfy_table::Color {
+    use comfy_table::Color;
+    match s {
+        ProbeStatus::Unlocked => Color::Green,
+        ProbeStatus::Restricted => Color::Yellow,
+        ProbeStatus::Blocked => Color::Red,
+        ProbeStatus::Unknown => Color::DarkGrey,
+    }
 }
 
 /// Markdown 渲染(pipe 表,兼容旧行为)

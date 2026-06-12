@@ -42,7 +42,7 @@ pub async fn run_routes(client: &Client, timeout_secs: u64) -> Vec<RouteResult> 
 
     match traced {
         Ok(per_target) => {
-            for ((carrier, city, name, ip), hops) in tgts.iter().zip(per_target.into_iter()) {
+            for ((carrier, city, name, ip), hops) in tgts.iter().zip(per_target) {
                 for hp in &hops {
                     if let Some(a) = hp.addr {
                         if is_public_v4(a) {

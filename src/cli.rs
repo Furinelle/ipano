@@ -17,9 +17,9 @@ pub struct Args {
     /// 输出 Markdown(含各源对比表 + 启发式结论)
     #[arg(long)]
     pub markdown: bool,
-    /// 输出语言:zh(默认)或 en
-    #[arg(long, default_value = "zh")]
-    pub lang: String,
+    /// 输出语言:zh(默认)或 en;未指定时回落到配置文件,再回落到 zh
+    #[arg(long)]
+    pub lang: Option<String>,
     /// 一键全跑:等价于同时传 --probe --mail --route --dnsbl
     #[arg(long, short = 'A')]
     pub all: bool,
@@ -42,7 +42,7 @@ pub struct Args {
     /// 关闭彩色
     #[arg(long)]
     pub no_color: bool,
-    /// 单源超时(秒)
-    #[arg(long, default_value_t = 8)]
-    pub timeout: u64,
+    /// 单源超时(秒);未指定时回落到配置文件,再回落到 8
+    #[arg(long)]
+    pub timeout: Option<u64>,
 }

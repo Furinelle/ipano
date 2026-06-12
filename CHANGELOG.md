@@ -4,6 +4,23 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.14.1] - 2026-06-13
+
+代码审查:修复 2 个 bug + 终端着色美化 + clippy 全绿。
+
+### 修复
+
+- **配置优先级 bug**:`lang`/`timeout` 改为 `Option`,修复「用户显式传 `--lang zh` / `--timeout 8`(恰为默认值)时被配置文件错误覆盖」——此前无法区分「显式传默认值」与「未传」,违反 CLI 优先于配置的约定
+- **DNSBL 误判 bug**:命中判定从「DNS 能否解析」收紧为「返回的 A 记录须落在 `127.0.0.0/8`」。此前 ISP 对 NXDOMAIN 做劫持(返回门户 IP)会被误判为所有黑名单全部命中;新增 `is_listed_addr` 校验 + 单元测试
+
+### 美化
+
+- **解锁检测表着色**:状态列按语义着色(解锁绿/部分黄/封锁红/未知灰),类型列原生绿/DNS 黄;标题栏加 `(解锁数/总数)` 汇总;`--no-color` 时退化纯文本
+- **DNSBL 表着色**:命中红/清白绿;汇总行有命中标红、全清白标绿
+- clippy 清零:`map_or(false, …)` → `is_some_and`,移除冗余 `.into_iter()`
+
+[0.14.1]: https://github.com/Furinelle/ipano/releases/tag/v0.14.1
+
 ## [0.14.0] - 2026-06-13
 
 P14:--all 一键全跑 + 配置文件 ~/.config/ipano/config.toml。

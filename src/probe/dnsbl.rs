@@ -1,4 +1,4 @@
-use std::net::Ipv4Addr;
+use std::net::{IpAddr, Ipv4Addr};
 use futures::future::join_all;
 use serde::Serialize;
 use tokio::time::{timeout, Duration};
@@ -31,14 +31,21 @@ pub fn reverse_ipv4(ip: Ipv4Addr) -> String {
     format!("{}.{}.{}.{}", o[3], o[2], o[1], o[0])
 }
 
+/// DNSBL 命中的判定:返回的 A 记录必须落在 127.0.0.0/8。
+/// 标准约定:命中返回 127.0.0.x;未命中返回 NXDOMAIN。
+/// 仅检查「能否解析」会被 ISP 的 NXDOMAIN 劫持(返回门户 IP)误判为全部命中。
+fn is_listed_addr(addr: IpAddr) -> bool {
+    matches!(addr, IpAddr::V4(v4) if v4.octets()[0] == 127)
+}
+
 /// 检查 IP 是否在单个 DNSBL 列表中(DNS 查询 4s 超时)
 async fn check_one(reversed: &str, list: &'static str) -> DnsblResult {
     let host = format!("{}.{}:0", reversed, list);
-    // 能解析 = 命中;NXDOMAIN/超时 = 未命中
-    let listed = timeout(Duration::from_secs(4), tokio::net::lookup_host(&host))
-        .await
-        .map(|r| r.is_ok())
-        .unwrap_or(false);
+    // 命中 = 解析成功且至少一条 A 记录在 127.0.0.0/8;NXDOMAIN/超时/劫持 = 未命中
+    let listed = match timeout(Duration::from_secs(4), tokio::net::lookup_host(&host)).await {
+        Ok(Ok(addrs)) => addrs.map(|sa| sa.ip()).any(is_listed_addr),
+        _ => false,
+    };
     DnsblResult { list: list.to_string(), listed }
 }
 
@@ -48,25 +55,39 @@ pub async fn check_all(ip: Ipv4Addr) -> Vec<DnsblResult> {
     join_all(DNSBL_LISTS.iter().map(|&list| check_one(&reversed, list))).await
 }
 
-/// 终端渲染(comfy-table 包边表)
-pub fn render_terminal(results: &[DnsblResult], ip: &str, lang: crate::i18n::Lang) -> String {
-    use comfy_table::{presets::UTF8_FULL, Table};
+/// 终端渲染(comfy-table 包边表;命中/清白着色,no_color 时退化为纯文本)
+pub fn render_terminal(results: &[DnsblResult], ip: &str, lang: crate::i18n::Lang, no_color: bool) -> String {
+    use comfy_table::{presets::UTF8_FULL, Cell, Color, Table};
     let listed_count = results.iter().filter(|r| r.listed).count();
     let mut out = format!("═══ {} {} ═══\n",
         lang.pick("DNSBL 黑名单检测", "DNSBL reputation check"), ip);
-    out.push_str(&format!("{}: {}/{}\n",
-        lang.pick("命中列表数", "Listed in"), listed_count, results.len()));
+    // 汇总:有命中红,全清白绿
+    let summary = format!("{}: {}/{}",
+        lang.pick("命中列表数", "Listed in"), listed_count, results.len());
+    if no_color {
+        out.push_str(&summary);
+    } else {
+        use owo_colors::OwoColorize;
+        if listed_count > 0 {
+            out.push_str(&summary.red().bold().to_string());
+        } else {
+            out.push_str(&summary.green().bold().to_string());
+        }
+    }
+    out.push('\n');
 
     let mut t = Table::new();
     t.load_preset(UTF8_FULL);
     t.set_header(vec![lang.pick("黑名单", "Blocklist"), lang.pick("状态", "Status")]);
     for r in results {
-        let status = if r.listed {
-            lang.pick("✗ 命中", "✗ Listed")
-        } else {
-            lang.pick("✓ 清白", "✓ Clean")
+        let label = if r.listed { lang.pick("✗ 命中", "✗ Listed") } else { lang.pick("✓ 清白", "✓ Clean") };
+        let status = Cell::new(label);
+        let status = match (no_color, r.listed) {
+            (false, true) => status.fg(Color::Red),
+            (false, false) => status.fg(Color::Green),
+            _ => status,
         };
-        t.add_row(vec![r.list.clone(), status.to_string()]);
+        t.add_row(vec![Cell::new(&r.list), status]);
     }
     out.push_str(&t.to_string());
     out.push('\n');
@@ -116,6 +137,21 @@ mod tests {
     }
 
     #[test]
+    fn is_listed_addr_accepts_127() {
+        assert!(is_listed_addr("127.0.0.2".parse().unwrap()));
+        assert!(is_listed_addr("127.0.0.10".parse().unwrap()));
+    }
+
+    #[test]
+    fn is_listed_addr_rejects_non_127() {
+        // ISP NXDOMAIN 劫持常返回门户 IP(非 127 段)→ 不算命中
+        assert!(!is_listed_addr("1.2.3.4".parse().unwrap()));
+        assert!(!is_listed_addr("198.51.100.1".parse().unwrap()));
+        // IPv6 一律不算命中
+        assert!(!is_listed_addr("::1".parse().unwrap()));
+    }
+
+    #[test]
     fn dnsbl_result_serializes() {
         let r = DnsblResult { list: "zen.spamhaus.org".into(), listed: false };
         let json = serde_json::to_string(&r).unwrap();
@@ -129,7 +165,7 @@ mod tests {
             DnsblResult { list: "zen.spamhaus.org".into(), listed: false },
             DnsblResult { list: "bl.spamcop.net".into(), listed: true },
         ];
-        let out = render_terminal(&results, "1.2.3.4", crate::i18n::Lang::Zh);
+        let out = render_terminal(&results, "1.2.3.4", crate::i18n::Lang::Zh, true);
         assert!(out.contains("1/2"));
         assert!(out.contains("zen.spamhaus.org"));
         assert!(out.contains("命中"));

@@ -36,10 +36,10 @@ pub fn conclude(r: &MergedReport, lang: Lang) -> Vec<String> {
         }
     }
 
-    let high_fraud = r.ipqs_score.map_or(false, |v| v >= 75)
-        || r.fraud_score.map_or(false, |v| v >= 75)
-        || r.abuseipdb_score.map_or(false, |v| v >= 50)
-        || r.risk_score.map_or(false, |v| v >= 75);
+    let high_fraud = r.ipqs_score.is_some_and(|v| v >= 75)
+        || r.fraud_score.is_some_and(|v| v >= 75)
+        || r.abuseipdb_score.is_some_and(|v| v >= 50)
+        || r.risk_score.is_some_and(|v| v >= 75);
     if high_fraud {
         out.push(lang.pick("高欺诈/滥用风险", "High fraud/abuse risk").into());
     }
@@ -47,7 +47,7 @@ pub fn conclude(r: &MergedReport, lang: Lang) -> Vec<String> {
     // 综合:无任何风险标记且纯净度高/属住宅原生
     let no_flags = r.is_proxy != Some(true) && r.is_vpn != Some(true)
         && r.is_tor != Some(true) && r.is_abuser != Some(true) && !high_fraud;
-    let looks_clean = r.trust_score.map_or(false, |t| t >= 60)
+    let looks_clean = r.trust_score.is_some_and(|t| t >= 60)
         || matches!(r.ip_type, Some(IpType::Residential) | Some(IpType::Native));
     if no_flags && looks_clean {
         out.push(lang.pick("未见明显风险", "No obvious risk detected").into());

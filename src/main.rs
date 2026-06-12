@@ -19,19 +19,13 @@ async fn main() {
     let cfg = config::load();
     let mut args = cli::Args::parse();
 
-    // 配置文件中的默认值(CLI 参数为 false/None 时生效)
-    if args.lang == "zh" {
-        if let Some(lang) = &cfg.lang { args.lang = lang.clone(); }
-    }
-    if args.timeout == 8 {
-        if let Some(t) = cfg.timeout { args.timeout = t; }
-    }
-    if !args.no_color {
-        if cfg.no_color == Some(true) { args.no_color = true; }
-    }
-    if args.ping0_token.is_none() {
-        args.ping0_token = cfg.ping0_token.clone();
-    }
+    // 优先级:CLI 显式参数 > 配置文件 > 内置默认。
+    // lang/timeout 为 Option,故能区分「用户显式传 zh/8」与「未传」。
+    let lang_str    = args.lang.clone().or(cfg.lang).unwrap_or_else(|| "zh".into());
+    let timeout     = args.timeout.or(cfg.timeout).unwrap_or(8);
+    // no_color/ping0_token:CLI flag 或配置任一开启即生效
+    let no_color    = args.no_color || cfg.no_color == Some(true);
+    let ping0_token = args.ping0_token.clone().or(cfg.ping0_token);
 
     // always 标志(配置文件中常开的模块)
     if let Some(always) = &cfg.always {
@@ -49,8 +43,8 @@ async fn main() {
         args.dnsbl = true;
     }
 
-    let lang   = i18n::Lang::parse(&args.lang);
-    let client = fetch::build_client(args.timeout);
+    let lang   = i18n::Lang::parse(&lang_str);
+    let client = fetch::build_client(timeout);
 
     let targets: Vec<IpAddr> = match &args.ip {
         Some(s) => match s.parse() {
@@ -79,13 +73,13 @@ async fn main() {
         Vec::new()
     };
     let mail = if args.mail {
-        probe::mail::check_all(args.timeout).await
+        probe::mail::check_all(timeout).await
     } else {
         Vec::new()
     };
     // 三网回程路由从本机出口发起(仅 IPv4),只跑一次;无特权自动降级
     let routes = if args.route {
-        probe::route::run_routes(&client, args.timeout).await
+        probe::route::run_routes(&client, timeout).await
     } else {
         Vec::new()
     };
@@ -102,7 +96,7 @@ async fn main() {
             Vec::new()
         };
 
-        let srcs    = sources::all_sources(args.ping0_token.clone());
+        let srcs    = sources::all_sources(ping0_token.clone());
         let results = sources::run_all(&client, ip, &srcs).await;
         let report  = aggregate::merge(ip, results);
 
@@ -112,13 +106,13 @@ async fn main() {
             if args.markdown {
                 print!("{}", render::markdown::to_markdown(&report, lang));
             } else {
-                print!("{}", render::terminal::render(&report, args.no_color, lang));
+                print!("{}", render::terminal::render(&report, no_color, lang));
             }
             if !probes.is_empty() {
                 let s = if args.markdown {
                     probe::render_section(&probes, lang)
                 } else {
-                    probe::render_terminal(&probes, lang)
+                    probe::render_terminal(&probes, lang, no_color)
                 };
                 println!("\n{}", s);
             }
@@ -142,7 +136,7 @@ async fn main() {
                 let s = if args.markdown {
                     probe::dnsbl::render_section(&dnsbl, &ip.to_string(), lang)
                 } else {
-                    probe::dnsbl::render_terminal(&dnsbl, &ip.to_string(), lang)
+                    probe::dnsbl::render_terminal(&dnsbl, &ip.to_string(), lang, no_color)
                 };
                 println!("\n{}", s);
             }
