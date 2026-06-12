@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-**v0.6.0 — P6 解锁检测**。新增主动解锁探测(Netflix/YouTube Premium/ChatGPT,`--probe`);邮局连通性、三网回程路由等在后续阶段交付(见[路线图](#路线图))。
+**v0.7.0 — P7 邮局连通性**。新增 SMTP 端口连通性检测(`--mail`);三网回程路由(需 root)等在后续阶段交付(见[路线图](#路线图))。
 
 ## 功能(当前版本)
 
@@ -20,6 +20,7 @@
 - **横向对比 + 启发式结论**:各源关键判定(代理/VPN/Tor/类型/风险分)并排对比,叠加启发式风险结论
 - **Markdown 导出 + 中英 i18n**:`--markdown` 输出可粘贴的报告,`--lang en` 切换英文
 - **解锁检测(`--probe`)**:从本机出口主动探测 Netflix、YouTube Premium、ChatGPT 的解锁状态与地区,失败标注未知不伪造
+- **邮局连通性(`--mail`)**:TCP 连 SMTP 25/465/587 探测到 Gmail/Outlook/QQ/Yahoo/Apple 的端口连通(VPS 25 端口常被封,一眼可见)
 
 ## 安装与构建
 
@@ -43,6 +44,7 @@ ipano --json 8.8.8.8   # 输出 JSON
 ipano --markdown 1.1.1.1   # 输出 Markdown(含各源对比表 + 启发式结论)
 ipano --lang en        # 英文输出(结论/对比/Markdown)
 ipano --probe          # 解锁检测(Netflix/YouTube/ChatGPT)
+ipano --mail           # 邮局连通性(SMTP 25/465/587)
 ipano --no-color       # 关闭彩色
 ipano --timeout 5      # 单源超时(秒,默认 8)
 ```
@@ -80,7 +82,7 @@ ipano --timeout 5      # 单源超时(秒,默认 8)
 | P4 | **西方欺诈库**(AbuseIPDB + IPQS,key 可选,无 key 自动跳过)| ✅ |
 | P5 | **横向对比表 + 启发式结论 + markdown 导出 + 中英 i18n** | ✅ |
 | P6 | **解锁检测**(Netflix/YouTube/ChatGPT,`--probe`)| ✅ |
-| P7 | 邮局连通性探测 | 计划中 |
+| P7 | **邮局连通性**(SMTP 25/465/587,`--mail`)| ✅ |
 | P8 | 可选 headless 浏览器后端(ping0 回退)| 计划中 |
 | P9 | 三网回程路由(原生 Rust traceroute + 回程线路识别,需 root)| 计划中 |
 
