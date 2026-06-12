@@ -1,0 +1,35 @@
+name: Release
+
+# 打 v* tag 时,交叉编译静态 musl 二进制并挂到 GitHub Release。
+# 任意 x86_64 / aarch64 Linux 下载即用,无需在目标机安装 Rust 或编译。
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # 某个架构挂了不影响其它架构照常发布
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
+    steps:
+      - uses: actions/checkout@v4
+      # 为目标架构准备交叉工具链(含 ring 编译所需的 C 编译器)
+      - uses: taiki-e/setup-cross-toolchain-action@v1
+        with:
+          target: ${{ matrix.target }}
+      # 编译 + strip + 打包(ipano-<target>.tar.gz)+ sha256,并上传到本 tag 的 Release
+      - uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          bin: ipano
+          target: ${{ matrix.target }}
+          archive: ipano-$target
+          checksum: sha256
+          token: ${{ secrets.GITHUB_TOKEN }}
