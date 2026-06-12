@@ -4,6 +4,23 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.11.0] - 2026-06-13
+
+P10:三网回程深化(多城市 + 骨干补全 + CN2 细分 + 单 socket 提速)。
+
+### 新增
+
+- **三网 × 四城 = 12 目标**:`--route` 从北京三网扩为 电信/联通/移动 × 北京/上海/广州/成都;参考 IP 取自社区 backtrace 工具(zhanghanyun/backtrace)事实标准集;JSON `route[]` 新增 `city` 字段
+- **CN2 GIA/GT 细分**:对电信 CN2(AS4809)按路径里的 `59.43` / `202.97` 段启发式细分——含 `59.43` 且不绕 `202.97`(163 骨干)判 **GIA**(精品),绕 163 判 **GT**,无 `59.43` 维持通用 CN2
+- **骨干 ASN 表补全**:联通补 AS4847(CUII 族)/AS4808/AS17623(169);移动补 AS56048/AS134774(CMNET)、AS58807(**CMIN2 精品**,纠正此前误标联通的 bug);新增 `59.43→4809`、`202.97→4134`、`218.105/210.51→9929`、`219.158→4837`、`223.120.16-19→58807`、`223.118-121→58453` 的前缀兜底(ip-api 无 AS 号时)
+
+### 变更
+
+- **单 socket 并行引擎**:`probe::route::engine` 从「每目标一 socket + 串行」改为「单 ICMP socket + 每目标独立 seq 段(base=idx×64)」;12 条 trace 探测包一次性全发、回包按 seq 段归位,总耗时从约 12×window 压到约 1 个 window。延续 P9「无跨 socket 串扰」结论(多 socket 会被内核广播 Time Exceeded 串扰)
+- 移动 CMI(AS58453)质量档由「优质」修正为「普通」(精品移动线为 CMIN2)
+
+[0.11.0]: https://github.com/Furinelle/ipano/releases/tag/v0.11.0
+
 ## [0.10.0] - 2026-06-13
 
 P12:邮件端口全面化。

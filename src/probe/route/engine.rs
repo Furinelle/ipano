@@ -1,7 +1,12 @@
-//! P9 traceroute 运行引擎:原生 ICMP socket(libc)+ ip-api 批量逐跳标注。
+//! P10 traceroute 运行引擎:单 ICMP socket 并行(libc)+ ip-api 批量逐跳标注。
 //!
-//! socket I/O 与系统强相关、无法用 mock 单测,故纯逻辑(报文构造/解析/线路识别/渲染)放在 `route.rs` 单测;
-//! 本文件只做「真发包」与编排,靠集成运行验证。
+//! P9 时三条 trace 各开一个 socket、串行跑(并发会让内核把 Time Exceeded 广播到多个 ICMP
+//! socket,按相同 seq 互相抢收造成串扰)。P10 扩到 12 目标(三网×四城),串行会慢到 12×window。
+//! 改为「单 socket + 每目标独立 seq 段」:只有一个 ICMP socket(无跨 socket 串扰),12 条 trace
+//! 的探测包一次性全发出,回包按 seq 段归位到各自目标 → 总耗时压到约 1 个 window。
+//!
+//! socket I/O 与系统强相关、无法用 mock 单测,故纯逻辑(报文构造/解析/线路识别/渲染)放在 `route.rs`
+//! 单测;本文件只做「真发包」与编排,靠集成运行验证。
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::net::Ipv4Addr;
@@ -11,31 +16,33 @@ use reqwest::Client;
 use serde::Deserialize;
 
 use super::{
-    build_echo_request, classify_entry, classify_line, is_public_v4, parse_icmp, targets, Carrier,
-    Hop, IcmpKind, RouteResult, MAX_HOPS,
+    asn_from_prefix, build_echo_request, classify_entry, classify_line, is_public_v4, parse_icmp,
+    refine_cn2, targets, Carrier, Hop, IcmpKind, RouteResult, MAX_HOPS,
 };
 
-/// 并发跑三网 traceroute,逐跳标注 AS/geo,识别回程线路类型。
-/// 任一目标失败/无特权 → 该条降级标注,不阻塞其余。
-pub async fn run_routes(client: &Client, timeout_secs: u64) -> Vec<RouteResult> {
-    // 发完全部 TTL 后的收包窗口;China 节点 RTT 较高,留 4-10s
-    let window = Duration::from_secs(timeout_secs.clamp(4, 10));
+/// 每目标分到的 seq 段宽度(须 ≥ MAX_HOPS;段 base = idx*SEQ_STRIDE,互不重叠)。
+const SEQ_STRIDE: u16 = 64;
 
-    // 串行跑三条 trace:并发会让内核把 Time Exceeded 广播到多个 ICMP socket,
-    // 各 trace 按相同 seq 互相抢收造成串扰(三条路径会混成一样)。串行 + 每条独立
-    // seq 段(base = i*64)双重隔离,杜绝跨 trace 与残留在途包混入。
-    let mut routes: Vec<RouteResult> = Vec::new();
+/// 单 socket 并行跑三网×四城 traceroute,逐跳标注 AS/geo,识别回程线路类型。
+/// socket 打开失败(无特权)→ 全部目标降级标注,不阻塞其余功能。
+pub async fn run_routes(client: &Client, timeout_secs: u64) -> Vec<RouteResult> {
+    let tgts = targets();
+    let ips: Vec<Ipv4Addr> = tgts.iter().map(|(_, _, _, ip)| *ip).collect();
+
+    // 发完全部 TTL 后的统一收包窗口;目标多、China 节点 RTT 高,留 6-12s。
+    let window = Duration::from_secs(timeout_secs.clamp(6, 12));
+
+    let traced = match tokio::task::spawn_blocking(move || trace_all(&ips, MAX_HOPS, window)).await {
+        Ok(r) => r,
+        Err(_) => Err("need_privilege".to_string()),
+    };
+
+    let mut routes: Vec<RouteResult> = Vec::with_capacity(tgts.len());
     let mut to_annotate: HashSet<Ipv4Addr> = HashSet::new();
 
-    for (i, (carrier, name, ip)) in targets().into_iter().enumerate() {
-        let seq_base = (i as u16) * 64;
-        let w = window;
-        let res = match tokio::task::spawn_blocking(move || trace_one(ip, MAX_HOPS, w, seq_base)).await {
-            Ok(r) => r,
-            Err(_) => continue,
-        };
-        match res {
-            Ok(hops) => {
+    match traced {
+        Ok(per_target) => {
+            for ((carrier, city, name, ip), hops) in tgts.iter().zip(per_target.into_iter()) {
                 for hp in &hops {
                     if let Some(a) = hp.addr {
                         if is_public_v4(a) {
@@ -44,24 +51,31 @@ pub async fn run_routes(client: &Client, timeout_secs: u64) -> Vec<RouteResult> 
                     }
                 }
                 routes.push(RouteResult {
-                    carrier,
+                    carrier: *carrier,
+                    city: *city,
                     target_name: name.to_string(),
-                    target: ip,
+                    target: *ip,
                     hops,
                     line: super::LineType::Unknown,
                     entry: super::LineType::Unknown,
                     degraded: None,
                 });
             }
-            Err(reason) => routes.push(RouteResult {
-                carrier,
-                target_name: name.to_string(),
-                target: ip,
-                hops: Vec::new(),
-                line: super::LineType::Unknown,
-                entry: super::LineType::Unknown,
-                degraded: Some(reason),
-            }),
+        }
+        Err(reason) => {
+            // socket 打开失败:整批降级
+            for (carrier, city, name, ip) in tgts.iter() {
+                routes.push(RouteResult {
+                    carrier: *carrier,
+                    city: *city,
+                    target_name: name.to_string(),
+                    target: *ip,
+                    hops: Vec::new(),
+                    line: super::LineType::Unknown,
+                    entry: super::LineType::Unknown,
+                    degraded: Some(reason.clone()),
+                });
+            }
         }
     }
 
@@ -72,30 +86,41 @@ pub async fn run_routes(client: &Client, timeout_secs: u64) -> Vec<RouteResult> 
             continue;
         }
         let mut asns: Vec<u32> = Vec::new();
+        let mut ips_in_path: Vec<Ipv4Addr> = Vec::new();
         for hp in r.hops.iter_mut() {
             if let Some(a) = hp.addr {
+                ips_in_path.push(a);
                 if let Some(g) = geo.get(&a) {
                     hp.asn = g.asn;
                     hp.as_org = g.as_org.clone();
                     hp.country = g.country.clone();
                     hp.city = g.city.clone();
-                    if let Some(n) = g.asn {
-                        asns.push(n);
-                    }
+                }
+                // ip-api 未给出 AS 号时,用前缀启发式兜底(不覆盖已有结果)
+                if hp.asn.is_none() {
+                    hp.asn = asn_from_prefix(a);
+                }
+                if let Some(n) = hp.asn {
+                    asns.push(n);
                 }
             }
         }
-        r.line = classify_line(r.carrier, &asns);
-        r.entry = classify_entry(&asns);
+        // 回程线路 + 国际入境线,再对 CN2 做 GIA/GT 细分
+        r.line = refine_cn2(classify_line(r.carrier, &asns), &ips_in_path);
+        r.entry = refine_cn2(classify_entry(&asns), &ips_in_path);
     }
 
-    // 维持 电信→联通→移动 的稳定展示顺序
-    routes.sort_by_key(|r| match r.carrier {
+    // 稳定展示顺序:电信→联通→移动,同运营商内 北京→上海→广州→成都
+    routes.sort_by_key(|r| (carrier_order(r.carrier), r.city.order()));
+    routes
+}
+
+fn carrier_order(c: Carrier) -> u8 {
+    match c {
         Carrier::Telecom => 0,
         Carrier::Unicom => 1,
         Carrier::Mobile => 2,
-    });
-    routes
+    }
 }
 
 // ───────────────────────── ip-api 批量标注 ─────────────────────────
@@ -156,14 +181,17 @@ async fn annotate(client: &Client, ips: &HashSet<Ipv4Addr>) -> HashMap<Ipv4Addr,
     map
 }
 
-// ───────────────────────── 原生 ICMP traceroute ─────────────────────────
+// ───────────────────────── 原生 ICMP traceroute(单 socket 并行) ─────────────────────────
 
-/// 单目标 traceroute:成功返回逐跳(asn/geo 暂空,后续批量填),失败(无特权等)返回降级标记。
+/// 一次性对 N 个目标各发 1..=max_hops 个探测包(单 socket,seq = idx*SEQ_STRIDE + ttl),
+/// 在统一 window 内收包按 seq 段归位。成功返回每目标的逐跳(asn/geo 暂空,后续批量填);
+/// socket 打开失败(无特权)→ 返回降级标记,整批降级。
 #[cfg(unix)]
-fn trace_one(target: Ipv4Addr, max_hops: u8, window: Duration, seq_base: u16) -> Result<Vec<Hop>, String> {
+fn trace_all(targets: &[Ipv4Addr], max_hops: u8, window: Duration) -> Result<Vec<Vec<Hop>>, String> {
     use std::os::raw::c_int;
     use std::time::Instant;
 
+    let n = targets.len();
     unsafe {
         let fd = open_icmp_socket()?;
 
@@ -180,42 +208,47 @@ fn trace_one(target: Ipv4Addr, max_hops: u8, window: Duration, seq_base: u16) ->
             std::mem::size_of::<libc::timeval>() as libc::socklen_t,
         );
 
-        // 每条 trace 用独立 id(防御性;Linux DGRAM 会改写 id,真正隔离靠 seq 段)
-        let id = (std::process::id() as u16).wrapping_add(seq_base);
-        let dest = make_sockaddr(target);
+        let id = std::process::id() as u16;
 
-        // 先把 TTL 1..=max 全部发出(seq = seq_base + ttl,各 trace seq 段互不重叠),按 ttl 记发送时刻
-        let mut send_times: BTreeMap<u8, Instant> = BTreeMap::new();
-        for ttl in 1..=max_hops {
-            let ttl_i = ttl as c_int;
-            libc::setsockopt(
-                fd,
-                libc::IPPROTO_IP,
-                libc::IP_TTL,
-                &ttl_i as *const _ as *const libc::c_void,
-                std::mem::size_of::<c_int>() as libc::socklen_t,
-            );
-            let pkt = build_echo_request(id, seq_base + ttl as u16, 32);
-            libc::sendto(
-                fd,
-                pkt.as_ptr() as *const libc::c_void,
-                pkt.len(),
-                0,
-                &dest as *const libc::sockaddr_in as *const libc::sockaddr,
-                std::mem::size_of::<libc::sockaddr_in>() as libc::socklen_t,
-            );
-            send_times.insert(ttl, Instant::now());
+        // 把 N×max_hops 个探测包全部发出。seq = idx*SEQ_STRIDE + ttl,各目标 seq 段互不重叠。
+        // 按 seq 记发送时刻,用于算 RTT,也作「这是本次发出的包」的白名单。
+        let mut send_times: HashMap<u16, Instant> = HashMap::new();
+        for (idx, &target) in targets.iter().enumerate() {
+            let dest = make_sockaddr(target);
+            let base = (idx as u16) * SEQ_STRIDE;
+            for ttl in 1..=max_hops {
+                let ttl_i = ttl as c_int;
+                libc::setsockopt(
+                    fd,
+                    libc::IPPROTO_IP,
+                    libc::IP_TTL,
+                    &ttl_i as *const _ as *const libc::c_void,
+                    std::mem::size_of::<c_int>() as libc::socklen_t,
+                );
+                let seq = base + ttl as u16;
+                let pkt = build_echo_request(id, seq, 32);
+                libc::sendto(
+                    fd,
+                    pkt.as_ptr() as *const libc::c_void,
+                    pkt.len(),
+                    0,
+                    &dest as *const libc::sockaddr_in as *const libc::sockaddr,
+                    std::mem::size_of::<libc::sockaddr_in>() as libc::socklen_t,
+                );
+                send_times.insert(seq, Instant::now());
+            }
         }
 
-        // 在 window 内收包,按 ttl 归位;只认本条 trace 的 seq 段
+        // 统一 window 内收包,按 seq → (目标 idx, ttl) 归位
         let deadline = Instant::now() + window;
-        let mut hops: BTreeMap<u8, Hop> = BTreeMap::new();
-        let mut dest_ttl: Option<u8> = None;
+        let mut hops_per: Vec<BTreeMap<u8, Hop>> = vec![BTreeMap::new(); n];
+        let mut dest_ttl_per: Vec<Option<u8>> = vec![None; n];
+        let mut done: HashSet<usize> = HashSet::new();
         let mut buf = [0u8; 1500];
         while Instant::now() < deadline {
             let mut from: libc::sockaddr_in = std::mem::zeroed();
             let mut fromlen = std::mem::size_of::<libc::sockaddr_in>() as libc::socklen_t;
-            let n = libc::recvfrom(
+            let nbytes = libc::recvfrom(
                 fd,
                 buf.as_mut_ptr() as *mut libc::c_void,
                 buf.len(),
@@ -223,55 +256,68 @@ fn trace_one(target: Ipv4Addr, max_hops: u8, window: Duration, seq_base: u16) ->
                 &mut from as *mut libc::sockaddr_in as *mut libc::sockaddr,
                 &mut fromlen,
             );
-            if n <= 0 {
+            if nbytes <= 0 {
                 continue; // 超时(EAGAIN)/被打断,继续看 deadline
             }
-            let Some(info) = parse_icmp(&buf[..n as usize]) else {
+            let Some(info) = parse_icmp(&buf[..nbytes as usize]) else {
                 continue;
             };
-            // 只接受落在本条 trace seq 段内的回包,别条/残留在途包一律丢弃
-            if info.seq <= seq_base || info.seq > seq_base + max_hops as u16 {
+            // 只认本次发出的 seq(白名单),别条/残留在途包一律丢弃
+            let Some(sent_at) = send_times.get(&info.seq) else {
+                continue;
+            };
+            let idx = (info.seq / SEQ_STRIDE) as usize;
+            let ttl = (info.seq % SEQ_STRIDE) as u8;
+            if idx >= n || ttl == 0 || ttl > max_hops {
                 continue;
             }
-            let ttl = (info.seq - seq_base) as u8;
             let from_ip = Ipv4Addr::from(u32::from_be(from.sin_addr.s_addr));
-            let rtt = send_times
-                .get(&ttl)
-                .map(|t| t.elapsed().as_secs_f64() * 1000.0);
+            let rtt = Some(sent_at.elapsed().as_secs_f64() * 1000.0);
             match info.kind {
                 IcmpKind::EchoReply | IcmpKind::DestUnreachable => {
-                    hops.entry(ttl).or_insert_with(|| mk_hop(ttl, from_ip, rtt));
-                    dest_ttl = Some(dest_ttl.map_or(ttl, |d| d.min(ttl)));
+                    hops_per[idx]
+                        .entry(ttl)
+                        .or_insert_with(|| mk_hop(ttl, from_ip, rtt));
+                    dest_ttl_per[idx] = Some(dest_ttl_per[idx].map_or(ttl, |d| d.min(ttl)));
                 }
                 IcmpKind::TimeExceeded => {
-                    hops.entry(ttl).or_insert_with(|| mk_hop(ttl, from_ip, rtt));
+                    hops_per[idx]
+                        .entry(ttl)
+                        .or_insert_with(|| mk_hop(ttl, from_ip, rtt));
                 }
                 IcmpKind::Other => {}
             }
-            // 已到目标且其之前所有跳都已收齐 → 提前结束
-            if let Some(dt) = dest_ttl {
-                if (1..=dt).all(|s| hops.contains_key(&s)) {
-                    break;
+            // 该目标已到终点且其前所有跳都收齐 → 标记完成;全部完成则提前结束
+            if let Some(dt) = dest_ttl_per[idx] {
+                if (1..=dt).all(|s| hops_per[idx].contains_key(&s)) {
+                    done.insert(idx);
+                    if done.len() == n {
+                        break;
+                    }
                 }
             }
         }
         libc::close(fd);
 
-        let max_ttl = dest_ttl.unwrap_or(max_hops);
-        let mut out: Vec<Hop> = (1..=max_ttl)
-            .map(|s| hops.get(&s).cloned().unwrap_or_else(|| empty_hop(s)))
-            .collect();
-        // 截掉最后一个有应答跳之后的连续无应答跳,避免一长串 *
-        match out.iter().rposition(|h| h.addr.is_some()) {
-            Some(last) => out.truncate(last + 1),
-            None => out.clear(),
+        // 各目标:补齐缺跳为 *,截掉最后一个有应答跳之后的连续无应答
+        let mut out: Vec<Vec<Hop>> = Vec::with_capacity(n);
+        for idx in 0..n {
+            let max_ttl = dest_ttl_per[idx].unwrap_or(max_hops);
+            let mut hops: Vec<Hop> = (1..=max_ttl)
+                .map(|s| hops_per[idx].get(&s).cloned().unwrap_or_else(|| empty_hop(s)))
+                .collect();
+            match hops.iter().rposition(|h| h.addr.is_some()) {
+                Some(last) => hops.truncate(last + 1),
+                None => hops.clear(),
+            }
+            out.push(hops);
         }
         Ok(out)
     }
 }
 
 #[cfg(not(unix))]
-fn trace_one(_target: Ipv4Addr, _max_hops: u8, _window: Duration, _seq_base: u16) -> Result<Vec<Hop>, String> {
+fn trace_all(_targets: &[Ipv4Addr], _max_hops: u8, _window: Duration) -> Result<Vec<Vec<Hop>>, String> {
     Err("need_privilege".to_string())
 }
 

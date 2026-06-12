@@ -9,7 +9,7 @@
 
 ## 当前状态
 
-**v0.9.0 — P9 三网回程路由**。新增 `--route`,从本机出口对 电信/联通/移动 参考节点发起原生 ICMP traceroute,逐跳标注 AS/归属并按骨干 ASN 启发式识别回程线路(CN2/163/169/9929/CMI 等)。优先用免特权 ICMP DGRAM socket(macOS 即开即用),Linux 需 root/`cap_net_raw`,无特权时该模块自动降级,不影响其余检测。
+**v0.11.0 — P10 三网回程深化**。`--route` 扩为 电信/联通/移动 × 北京/上海/广州/成都 = 12 个骨干节点;电信 CN2 细分 GIA/GT(看 `59.43`/`202.97` 段),骨干 ASN 表补全(含纠正 AS58807 → 移动 CMIN2 精品)。引擎改为**单 ICMP socket + 每目标独立 seq 段**,12 条 trace 一次性并发探测,总耗时从约 12×window 压到约 1 个 window。优先用免特权 ICMP DGRAM socket(macOS 即开即用),Linux 需 root/`cap_net_raw`,无特权时该模块自动降级,不影响其余检测。
 
 ## 功能(当前版本)
 
@@ -24,7 +24,7 @@
 - **Markdown 导出 + 中英 i18n**:`--markdown` 输出可粘贴的报告,`--lang en` 切换英文
 - **解锁检测(`--probe`)**:从本机出口主动探测 Netflix、YouTube Premium、ChatGPT 的解锁状态与地区,失败标注未知不伪造
 - **邮件端口连通性(`--mail`)**:6 协议矩阵 SMTP/SMTPS/POP3/POP3S/IMAP/IMAPS × 15 家邮局(Gmail/Outlook/Office365/Yahoo/Apple/QQ/163/Sina/Sohu/Yandex/Zoho/GMX/MailRU/AOL/FastMail),包边表呈现(VPS 25 端口常被封,一眼可见)
-- **三网回程路由(`--route`)**:原生 Rust ICMP traceroute 到 电信/联通/移动 北京参考节点,每跳复用 ip-api 标注 AS/归属,按骨干 ASN(CN2 AS4809 / 163 AS4134 / 169 AS4837 / 9929 / CMI AS58453 / CMNET AS9808 等)启发式识别回程线路类型与质量档(优质/普通);需 root/`cap_net_raw`,无特权自动降级
+- **三网回程路由(`--route`)**:原生 Rust ICMP traceroute 到 电信/联通/移动 × 北京/上海/广州/成都 12 个参考节点(单 socket 并行),每跳复用 ip-api 标注 AS/归属,按骨干 ASN(CN2 AS4809 / 163 AS4134 / 169 AS4837 / 9929 / CMIN2 AS58807 / CMI AS58453 / CMNET AS9808 等)启发式识别回程线路类型与质量档(优质/普通),并对电信 CN2 细分 GIA/GT;需 root/`cap_net_raw`,无特权自动降级
 
 ## 安装
 
@@ -96,14 +96,17 @@ ipano --timeout 5      # 单源超时(秒,默认 8)
 ```
 三网回程路由(traceroute)
 
-| 运营商 | 目标节点                 | 回程线路           | 质量 | 跳数 |
-|--------|--------------------------|--------------------|------|------|
-| 电信   | 北京电信 219.141.136.12  | 电信 CN2 (AS4809)  | 优质 | 12   |
-| 联通   | 北京联通 202.106.50.1    | 联通 169 (AS4837)  | 普通 | 14   |
-| 移动   | 北京移动 211.136.25.153  | 移动 CMI (AS58453) | 优质 | 11   |
+| 运营商 | 目标节点                 | 入境线           | 回程线路              | 质量 | 跳数 |
+|--------|--------------------------|------------------|-----------------------|------|------|
+| 电信   | 北京电信 219.141.140.10  | 电信 CN2 GIA     | 电信 CN2 GIA (AS4809) | 优质 | 12   |
+| 电信   | 上海电信 202.96.209.133  | 电信 CN2 GT      | 电信 CN2 GT (AS4809)  | 优质 | 13   |
+| 电信   | 成都电信 61.139.2.69     | 电信 163         | 电信 163 (AS4134)     | 普通 | 14   |
+| 联通   | 北京联通 202.106.195.68  | 联通 9929/CUII   | 联通 9929/CUII (AS9929)| 优质 | 11  |
+| 移动   | 北京移动 221.179.155.161 | 移动 CMIN2       | 移动 CMIN2 (AS58807)  | 优质 | 11   |
+| 移动   | 成都移动 211.137.96.205  | 移动 CMI         | 移动 CMI (AS58453)    | 普通 | 13   |
 ```
 
-(逐跳明细含每跳 IP/RTT/AS/归属;无特权时整条降级标注「需 root 运行」,不影响其余检测。)
+(共 12 行,三网 × 四城,此处略示;逐跳明细含每跳 IP/RTT/AS/归属;无特权时整条降级标注「需 root 运行」,不影响其余检测。示例值仅为示意,实际随测点而变。)
 
 ## 能力边界
 
@@ -111,7 +114,7 @@ ipano --timeout 5      # 单源超时(秒,默认 8)
 
 **关于 ping0.cc**:ping0 现已被 Cloudflare Turnstile 验证码全站接管,且其 token 60 秒过期,无法程序化抓取(强行绕过验证码不在本工具范围)。ipano 仅支持 **cookie 复用**:在浏览器中解开 ping0 验证码后,把 `token` cookie 值通过环境变量 `IPANO_PING0_TOKEN` 提供(60 秒内有效),ipano 会在该窗口内复用;未提供或已失效时,ping0 源自动标注降级,不影响其它源。
 
-**关于三网回程路由(`--route`)**:原生 ICMP traceroute 需 raw/dgram socket。ipano 优先用免特权 ICMP DGRAM socket(macOS 即可、Linux 受 `net.ipv4.ping_group_range` 许可时可),失败回退 raw socket(需 root/`cap_net_raw`),两者皆不可用时该模块整体降级标注「需 root 运行」,不影响其余检测。回程线路识别基于骨干 ASN 表,结果为**启发式**,仅供参考(CN2 GIA/GT 的细分需进一步看 59.43 节点,当前统一标 CN2)。当前仅 IPv4。
+**关于三网回程路由(`--route`)**:原生 ICMP traceroute 需 raw/dgram socket。ipano 优先用免特权 ICMP DGRAM socket(macOS 即可、Linux 受 `net.ipv4.ping_group_range` 许可时可),失败回退 raw socket(需 root/`cap_net_raw`),两者皆不可用时该模块整体降级标注「需 root 运行」,不影响其余检测。回程线路识别基于骨干 ASN 表 + IP 前缀兜底,结果为**启发式**,仅供参考;电信 CN2 的 GIA/GT 细分按路径里的 `59.43`/`202.97` 段判定(含 `59.43` 不绕 `202.97` → GIA,绕 163 → GT,无 `59.43` → 通用 CN2),同样为启发式。当前仅 IPv4。
 
 ## 路线图
 
@@ -127,6 +130,8 @@ ipano --timeout 5      # 单源超时(秒,默认 8)
 | P7 | **邮局连通性**(SMTP 25/465/587,`--mail`)| ✅ |
 | P8 | **ping0 token 手动复用**(`--ping0-token`,浏览器解验证码后提供,否则降级)| ✅ |
 | P9 | **三网回程路由**(原生 Rust traceroute + 三网节点表 + 回程线路识别 + 每跳 AS/geo 标注,`--route`,需 root,无特权降级)| ✅ |
+| P10 | **三网回程深化**(三网 × 四城 12 目标 + CN2 GIA/GT 细分 + 骨干 ASN 补全 + 单 socket 并行提速)| ✅ |
+| P12 | **邮件端口全面化**(6 协议 SMTP/SMTPS/POP3/POP3S/IMAP/IMAPS × 15 家邮局矩阵,`--mail`)| ✅ |
 
 完整设计见 [`docs/superpowers/specs/2026-06-11-ipano-design.md`](docs/superpowers/specs/2026-06-11-ipano-design.md);地基实现计划见 [`docs/superpowers/plans/2026-06-11-ipano-foundation.md`](docs/superpowers/plans/2026-06-11-ipano-foundation.md)。
 
