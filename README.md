@@ -23,15 +23,35 @@
 - **邮局连通性(`--mail`)**:TCP 连 SMTP 25/465/587 探测到 Gmail/Outlook/QQ/Yahoo/Apple 的端口连通(VPS 25 端口常被封,一眼可见)
 - **三网回程路由(`--route`)**:原生 Rust ICMP traceroute 到 电信/联通/移动 北京参考节点,每跳复用 ip-api 标注 AS/归属,按骨干 ASN(CN2 AS4809 / 163 AS4134 / 169 AS4837 / 9929 / CMI AS58453 / CMNET AS9808 等)启发式识别回程线路类型与质量档(优质/普通);需 root/`cap_net_raw`,无特权自动降级
 
-## 安装与构建
+## 安装
 
-需要 [Rust 工具链](https://rustup.rs/)。
+### 预编译二进制(推荐,无需 Rust、不在本机编译)
+
+静态 musl 二进制,任意 x86_64 / aarch64 Linux 下载即用:
 
 ```bash
-git clone https://github.com/Furinelle/ipano.git
-cd ipano
+# 一键脚本(自动识别架构,默认装到 /usr/local/bin)
+curl -fsSL https://raw.githubusercontent.com/Furinelle/ipano/main/scripts/install.sh | sh
+
+# 或手动下载对应架构
+curl -fsSL https://github.com/Furinelle/ipano/releases/latest/download/ipano-x86_64-unknown-linux-musl.tar.gz | tar xz
+./ipano 1.1.1.1
+```
+
+部署到一堆 VPS:**编一次、把单文件 `scp` 过去即可**,小内存机器无需本地编译——编译吃内存(`rustc`/LLVM 要 1GB+),但跑起来很轻(单文件、几十 MB 内存、秒启动)。
+
+### 从源码编译
+
+需要 [Rust 工具链](https://rustup.rs/):
+
+```bash
+git clone https://github.com/Furinelle/ipano.git && cd ipano
 cargo build --release
 # 二进制在 target/release/ipano
+
+# 想自己产可分发的静态二进制:
+rustup target add x86_64-unknown-linux-musl && sudo apt install -y musl-tools
+cargo build --release --target x86_64-unknown-linux-musl
 ```
 
 ## 用法
