@@ -1,7 +1,7 @@
 name: Release
 
-# 打 v* tag 时,交叉编译静态 musl 二进制并挂到 GitHub Release。
-# 任意 x86_64 / aarch64 Linux 下载即用,无需在目标机安装 Rust 或编译。
+# 打 v* tag 时:先创建该 tag 的 GitHub Release,再交叉编译静态 musl 二进制并上传。
+# (推 tag 不会自动建 Release;upload-rust-binary-action 找不到 Release 会一直 "release not found")
 on:
   push:
     tags: ["v*"]
@@ -10,7 +10,20 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 创建 Release(幂等,已存在则跳过)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+                 --title "$GITHUB_REF_NAME" --notes "ipano $GITHUB_REF_NAME — 详见 CHANGELOG.md"
+
+  upload:
+    needs: create-release
     name: ${{ matrix.target }}
     runs-on: ubuntu-latest
     strategy:
@@ -25,7 +38,7 @@ jobs:
       - uses: taiki-e/setup-cross-toolchain-action@v1
         with:
           target: ${{ matrix.target }}
-      # 编译 + strip + 打包(ipano-<target>.tar.gz)+ sha256,并上传到本 tag 的 Release
+      # 编译 + strip + 打包(ipano-<target>.tar.gz)+ sha256,上传到本 tag 的 Release
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
           bin: ipano
