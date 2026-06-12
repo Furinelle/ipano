@@ -4,6 +4,18 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.9.1] - 2026-06-12
+
+P9 增强:国际入境线识别 + 终端表格化。
+
+### 新增
+
+- **国际入境线识别(`入境线`列)**:不限运营商,识别全路径里优先级最高的骨干,揭示三网各经哪家入境(常见如三网均经联通 CUG / AS10099 入境);JSON `route[]` 新增 `entry` 字段
+- **终端 comfy-table 包边表**:`--route` 终端输出改用与主报告一致的包边表(概览表 + 逐跳表),`--markdown` 仍输出 pipe 表
+- 降级时概览表后给出 `sudo` / `setcap` 重试提示;README 顶部加 Release/Build 徽章
+
+[0.9.1]: https://github.com/Furinelle/ipano/releases/tag/v0.9.1
+
 ## [0.9.0] - 2026-06-12
 
 P9:三网回程路由(原生 traceroute)。

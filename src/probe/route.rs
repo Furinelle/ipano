@@ -114,6 +114,20 @@ pub fn classify_line(carrier: Carrier, asns: &[u32]) -> LineType {
     best.map(|(lt, _)| lt).unwrap_or(LineType::Unknown)
 }
 
+/// 国际入境线识别:不限运营商,取全路径里优先级最高的骨干。
+/// 揭示「这条 trace 实际经哪家入境」(如三网都经联通 CUG)。
+pub fn classify_entry(asns: &[u32]) -> LineType {
+    let mut best: Option<(LineType, u8)> = None;
+    for &asn in asns {
+        if let Some((_c, lt, prio)) = backbone_of(asn) {
+            if best.map(|(_, p)| prio > p).unwrap_or(true) {
+                best = Some((lt, prio));
+            }
+        }
+    }
+    best.map(|(lt, _)| lt).unwrap_or(LineType::Unknown)
+}
+
 // ───────────────────────── 数据结构 ─────────────────────────
 
 #[derive(Debug, Clone, Serialize)]
@@ -133,7 +147,10 @@ pub struct RouteResult {
     pub target_name: String,
     pub target: Ipv4Addr,
     pub hops: Vec<Hop>,
+    /// 该运营商自己的回程骨干(启发式)
     pub line: LineType,
+    /// 国际入境线:全路径里优先级最高的骨干(不限运营商),揭示「经哪家入境」
+    pub entry: LineType,
     /// 降级原因(如「需 root 运行」);非空时 hops 为空
     pub degraded: Option<String>,
 }
@@ -256,14 +273,15 @@ pub fn render_section(routes: &[RouteResult], lang: Lang) -> String {
     writeln!(out).ok();
 
     // 概览表
-    writeln!(out, "| {} | {} | {} | {} | {} |",
+    writeln!(out, "| {} | {} | {} | {} | {} | {} |",
         lang.pick("运营商", "Carrier"),
         lang.pick("目标节点", "Target"),
+        lang.pick("入境线", "Entry"),
         lang.pick("回程线路", "Return line"),
         lang.pick("质量", "Quality"),
         lang.pick("跳数", "Hops"),
     ).ok();
-    writeln!(out, "|---|---|---|---|---|").ok();
+    writeln!(out, "|---|---|---|---|---|---|").ok();
     for r in routes {
         if let Some(reason) = &r.degraded {
             // "need_privilege" 为稳定标记,渲染期按语言翻译;其它原因原样透出
@@ -272,12 +290,12 @@ pub fn render_section(routes: &[RouteResult], lang: Lang) -> String {
             } else {
                 reason.as_str()
             };
-            writeln!(out, "| {} | {} {} | {} | — | — |",
+            writeln!(out, "| {} | {} {} | — | {} | — | — |",
                 r.carrier.label(lang), r.target_name, r.target, txt).ok();
         } else {
-            writeln!(out, "| {} | {} {} | {} | {} | {} |",
+            writeln!(out, "| {} | {} {} | {} | {} | {} | {} |",
                 r.carrier.label(lang), r.target_name, r.target,
-                r.line.label(lang), r.line.quality(lang), r.hops.len()).ok();
+                r.entry.label(lang), r.line.label(lang), r.line.quality(lang), r.hops.len()).ok();
         }
     }
     if routes.iter().any(|r| r.degraded.is_some()) {
@@ -309,6 +327,81 @@ pub fn render_section(routes: &[RouteResult], lang: Lang) -> String {
             };
             writeln!(out, "| {} | {} | {} | {} {} | {} |", h.ttl, ip, rtt, asn, org, loc).ok();
         }
+        out.push('\n');
+    }
+    out
+}
+
+/// 渲染三网回程路由区(comfy-table 包边表,终端用;与主报告风格一致)
+pub fn render_terminal(routes: &[RouteResult], lang: Lang) -> String {
+    use comfy_table::{presets::UTF8_FULL, Table};
+    let mut out = String::new();
+    out.push_str(&format!("═══ {} ═══\n",
+        lang.pick("三网回程路由(traceroute)", "China route (traceroute)")));
+    out.push_str(&format!("{}\n", lang.pick(
+        "启发式识别,仅供参考;需 root/cap_net_raw,无特权自动降级",
+        "Heuristic; for reference only. Needs root/cap_net_raw, auto-degrades otherwise",
+    )));
+
+    // 概览表
+    let mut t = Table::new();
+    t.load_preset(UTF8_FULL);
+    t.set_header(vec![
+        lang.pick("运营商", "Carrier"),
+        lang.pick("目标节点", "Target"),
+        lang.pick("入境线", "Entry"),
+        lang.pick("回程线路", "Return line"),
+        lang.pick("质量", "Quality"),
+        lang.pick("跳数", "Hops"),
+    ]);
+    for r in routes {
+        let target = format!("{} {}", r.target_name, r.target);
+        if let Some(reason) = &r.degraded {
+            let txt = if reason == "need_privilege" {
+                lang.pick("需 root 运行", "needs root/cap_net_raw")
+            } else { reason.as_str() };
+            t.add_row(vec![r.carrier.label(lang).to_string(), target,
+                "—".into(), txt.to_string(), "—".into(), "—".into()]);
+        } else {
+            t.add_row(vec![
+                r.carrier.label(lang).to_string(), target,
+                r.entry.label(lang).to_string(), r.line.label(lang).to_string(),
+                r.line.quality(lang).to_string(), r.hops.len().to_string(),
+            ]);
+        }
+    }
+    out.push_str(&t.to_string());
+    out.push('\n');
+
+    if routes.iter().any(|r| r.degraded.is_some()) {
+        out.push_str(&format!("{}\n", lang.pick(
+            "部分目标因无特权已降级:用 `sudo ipano --route`,或先 `sudo setcap cap_net_raw+ep <二进制>` 一次后免 sudo",
+            "Some targets degraded (no privilege): run `sudo ipano --route`, or `sudo setcap cap_net_raw+ep <binary>` once",
+        )));
+    }
+
+    // 每条 trace 的逐跳明细
+    for r in routes {
+        if r.degraded.is_some() || r.hops.is_empty() {
+            continue;
+        }
+        out.push_str(&format!("\n{} {} {}\n", r.carrier.label(lang), r.target_name, r.target));
+        let mut ht = Table::new();
+        ht.load_preset(UTF8_FULL);
+        ht.set_header(vec!["#", "IP", "RTT", "AS", lang.pick("归属", "Location")]);
+        for h in &r.hops {
+            let ip = h.addr.map(|a| a.to_string()).unwrap_or_else(|| "*".into());
+            let rtt = h.rtt_ms.map(|v| format!("{:.1}ms", v)).unwrap_or_else(|| "—".into());
+            let asn = h.asn.map(|a| format!("AS{}", a)).unwrap_or_else(|| "—".into());
+            let org = h.as_org.clone().unwrap_or_default();
+            let loc = match (&h.country, &h.city) {
+                (Some(c), Some(ci)) => format!("{} {}", c, ci),
+                (Some(c), None) => c.clone(),
+                _ => "—".into(),
+            };
+            ht.add_row(vec![h.ttl.to_string(), ip, rtt, format!("{} {}", asn, org), loc]);
+        }
+        out.push_str(&ht.to_string());
         out.push('\n');
     }
     out
@@ -408,6 +501,15 @@ mod tests {
     }
 
     #[test]
+    fn entry_picks_dominant_backbone_any_carrier() {
+        // 路径经联通 CUG(10099)+169(4837):入境线取优先级最高者 = CUG,不限运营商
+        assert_eq!(classify_entry(&[4837, 10099, 9808]), LineType::Cug);
+        // 即便目标是电信(无电信骨干),入境线仍能识别出经 CUG
+        assert_eq!(classify_line(Carrier::Telecom, &[10099, 4847]), LineType::Unknown);
+        assert_eq!(classify_entry(&[10099, 4847]), LineType::Cug);
+    }
+
+    #[test]
     fn line_quality_labels() {
         assert_eq!(LineType::Cn2.quality(Lang::Zh), "优质");
         assert_eq!(LineType::Chinanet163.quality(Lang::Zh), "普通");
@@ -433,6 +535,7 @@ mod tests {
             target: Ipv4Addr::new(219, 141, 136, 12),
             hops: vec![],
             line: LineType::Unknown,
+            entry: LineType::Unknown,
             degraded: Some("需 root 运行".into()),
         }];
         let s = render_section(&routes, Lang::Zh);
@@ -455,6 +558,7 @@ mod tests {
                 Hop { ttl: 3, addr: Some(Ipv4Addr::new(219, 141, 136, 12)), rtt_ms: Some(33.2), asn: Some(4809), as_org: Some("Chinanet".into()), country: Some("CN".into()), city: Some("Beijing".into()) },
             ],
             line: LineType::Cn2,
+            entry: LineType::Cn2,
             degraded: None,
         }];
         let s = render_section(&routes, Lang::Zh);
