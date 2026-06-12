@@ -5,6 +5,8 @@ mod aggregate;
 mod sources;
 mod render;
 mod cli;
+mod i18n;
+mod heuristics;
 
 use std::net::IpAddr;
 use clap::Parser;
@@ -12,6 +14,7 @@ use clap::Parser;
 #[tokio::main]
 async fn main() {
     let args = cli::Args::parse();
+    let lang = i18n::Lang::parse(&args.lang);
     let client = fetch::build_client(args.timeout);
 
     let targets: Vec<IpAddr> = match &args.ip {
@@ -35,8 +38,10 @@ async fn main() {
         let report = aggregate::merge(ip, results);
         if args.json {
             println!("{}", render::json::to_json(&report));
+        } else if args.markdown {
+            println!("{}", render::markdown::to_markdown(&report, lang));
         } else {
-            println!("{}", render::terminal::render(&report, args.no_color));
+            println!("{}", render::terminal::render(&report, args.no_color, lang));
         }
     }
 }

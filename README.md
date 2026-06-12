@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-**v0.4.0 — P4 西方欺诈库**。已实现免 key 基础源 + ip.net.coffee 风险源 + ippure 欺诈源 + 可选 key 的 AbuseIPDB/IPQS 聚合;流媒体/AI/邮局探测、三网回程路由等在后续阶段交付(见[路线图](#路线图))。
+**v0.5.0 — P5 对比表/结论/导出/i18n**。在多源聚合之上新增各源关键判定横向对比、启发式风险结论、Markdown 导出与中英双语;流媒体/AI/邮局探测、三网回程路由等在后续阶段交付(见[路线图](#路线图))。
 
 ## 功能(当前版本)
 
@@ -17,6 +17,8 @@
 - **风险/纯净度**:接入 ip.net.coffee `iprisk` 接口,呈现纯净度、滥用评分、信誉威胁值、AI 判定及代理/VPN/Tor/机房等标记
 - **欺诈分**:接入 [ippure](https://ippure.com) `fraudScore`(仅本机出口模式;查指定 IP 时该源自动跳过,因其 API 只返回调用者 IP)
 - **西方欺诈库(可选 key)**:配置环境变量后启用 [AbuseIPDB](https://www.abuseipdb.com)(`IPANO_ABUSEIPDB_KEY`,滥用置信度)与 [IPQS](https://www.ipqualityscore.com)(`IPANO_IPQS_KEY`,欺诈分 + proxy/vpn/tor);未配置则自动跳过并标注,绝不伪造
+- **横向对比 + 启发式结论**:各源关键判定(代理/VPN/Tor/类型/风险分)并排对比,叠加启发式风险结论
+- **Markdown 导出 + 中英 i18n**:`--markdown` 输出可粘贴的报告,`--lang en` 切换英文
 
 ## 安装与构建
 
@@ -37,6 +39,8 @@ ipano 1.1.1.1          # 查指定 IP
 ipano -4               # 仅 IPv4
 ipano -6               # 仅 IPv6
 ipano --json 8.8.8.8   # 输出 JSON
+ipano --markdown 1.1.1.1   # 输出 Markdown(含各源对比表 + 启发式结论)
+ipano --lang en        # 英文输出(结论/对比/Markdown)
 ipano --no-color       # 关闭彩色
 ipano --timeout 5      # 单源超时(秒,默认 8)
 ```
@@ -72,7 +76,7 @@ ipano --timeout 5      # 单源超时(秒,默认 8)
 | P2 | **ip.net.coffee 风控/纯净度源**(trust_score/abuser/rep_threat/AI 判定)+ ping0 cookie 复用降级 | ✅ |
 | P3 | **ippure 欺诈源**(fraudScore,egress 专用)+ ip-api 代理/机房交叉确认 | ✅ |
 | P4 | **西方欺诈库**(AbuseIPDB + IPQS,key 可选,无 key 自动跳过)| ✅ |
-| P5 | 关键判定横向对比表 + 启发式结论 + markdown 导出 + i18n | 计划中 |
+| P5 | **横向对比表 + 启发式结论 + markdown 导出 + 中英 i18n** | ✅ |
 | P6 | 流媒体 + AI 解锁探测 | 计划中 |
 | P7 | 邮局连通性探测 | 计划中 |
 | P8 | 可选 headless 浏览器后端(ping0 回退)| 计划中 |
