@@ -25,6 +25,11 @@ pub struct Config {
     pub no_color: Option<bool>,
     pub ping0_token: Option<String>,
     pub always: Option<AlwaysFlags>,
+    /// 自定义测速节点(覆盖内置默认);例:
+    /// [[speedtest]]
+    /// name = "电信上海"
+    /// url  = "http://example.com/100mb.bin"
+    pub speedtest: Option<Vec<crate::probe::speedtest::SpeedNode>>,
 }
 
 #[derive(Debug, Deserialize, Default)]

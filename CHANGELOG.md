@@ -4,6 +4,20 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.15.0] - 2026-06-13
+
+P15:多节点下载测速(可选)。ecs-parity 路线图 P10-P15 全部完成。
+
+### 新增
+
+- **`--speedtest` 多节点测速**:从本机出口顺序下载多个全球节点测下载速率(Mbps)。默认 4 个稳定 HTTP 下载点:Cachefly CDN(全球) / Linode 东京(亚太) / Linode 美西 / ThinkBroadband(英国);每节点上限 50MB 或 10s,先到先停
+- **串行执行**:节点逐个测,避免并发互相抢带宽导致结果失真;使用独立浏览器 UA 客户端(部分测速点对非主流 UA 返回 403)
+- **配置文件自定义节点**:`~/.config/ipano/config.toml` 可用 `[[speedtest]]` 数组覆盖默认节点(name + url),便于测国内三网测速点
+- **着色渲染**:速率高绿(≥100)/中黄(≥20)/低红/失败灰;comfy-table 包边表 + `--markdown` pipe 表 + `--json` 新增 `speedtest[]`(name/mbps/bytes/secs/ok)
+- **不含在 `--all` 内**:测速会消耗较多流量(最多 200MB),故需单独 `--speedtest` 开启,避免 `--all` 意外跑满流量
+
+[0.15.0]: https://github.com/Furinelle/ipano/releases/tag/v0.15.0
+
 ## [0.14.1] - 2026-06-13
 
 代码审查:修复 2 个 bug + 终端着色美化 + clippy 全绿。

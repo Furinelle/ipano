@@ -35,6 +35,10 @@ pub struct Args {
     /// 启用 DNSBL 黑名单检测(12 个主流邮件/滥用黑名单,仅 IPv4)
     #[arg(long)]
     pub dnsbl: bool,
+    /// 启用多节点下载测速(顺序下载 Cloudflare/Cachefly/Linode 东京/ThinkBroadband;
+    /// 会消耗较多流量,故不含在 --all 内,需单独开启)
+    #[arg(long)]
+    pub speedtest: bool,
     /// ping0 token(浏览器解 Turnstile 验证码后从 cookie 复制,60 秒内有效);
     /// 不提供则 ping0 源自动降级。也可用环境变量 IPANO_PING0_TOKEN
     #[arg(long)]

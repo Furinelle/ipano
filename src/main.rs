@@ -83,6 +83,13 @@ async fn main() {
     } else {
         Vec::new()
     };
+    // 多节点测速从本机出口发起,只跑一次(串行,耗时较长);配置文件可覆盖节点
+    let speedtest = if args.speedtest {
+        let nodes = cfg.speedtest.unwrap_or_else(probe::speedtest::default_nodes);
+        probe::speedtest::run_all(&nodes).await
+    } else {
+        Vec::new()
+    };
 
     for ip in targets {
         // DNSBL 检测:针对当前查询 IP(仅 IPv4)
@@ -101,7 +108,7 @@ async fn main() {
         let report  = aggregate::merge(ip, results);
 
         if args.json {
-            println!("{}", render::json::to_json(&report, &probes, &mail, &routes, &dnsbl));
+            println!("{}", render::json::to_json(&report, &probes, &mail, &routes, &dnsbl, &speedtest));
         } else {
             if args.markdown {
                 print!("{}", render::markdown::to_markdown(&report, lang));
@@ -137,6 +144,14 @@ async fn main() {
                     probe::dnsbl::render_section(&dnsbl, &ip.to_string(), lang)
                 } else {
                     probe::dnsbl::render_terminal(&dnsbl, &ip.to_string(), lang, no_color)
+                };
+                println!("\n{}", s);
+            }
+            if !speedtest.is_empty() {
+                let s = if args.markdown {
+                    probe::speedtest::render_section(&speedtest, lang)
+                } else {
+                    probe::speedtest::render_terminal(&speedtest, lang, no_color)
                 };
                 println!("\n{}", s);
             }
