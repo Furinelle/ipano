@@ -33,9 +33,14 @@ async fn main() {
         }
     };
 
-    // 解锁检测从本机出口发起,与查询 IP 无关,只跑一次
+    // 解锁检测/邮局连通性从本机出口发起,与查询 IP 无关,只跑一次
     let probes = if args.probe {
         probe::run_all(&client, &probe::all_probes()).await
+    } else {
+        Vec::new()
+    };
+    let mail = if args.mail {
+        probe::mail::check_all(args.timeout).await
     } else {
         Vec::new()
     };
@@ -45,13 +50,15 @@ async fn main() {
         let results = sources::run_all(&client, ip, &srcs).await;
         let report = aggregate::merge(ip, results);
         if args.json {
-            println!("{}", render::json::to_json(&report, &probes));
-        } else if args.markdown {
-            print!("{}", render::markdown::to_markdown(&report, lang));
-            if !probes.is_empty() { println!("\n{}", probe::render_section(&probes, lang)); }
+            println!("{}", render::json::to_json(&report, &probes, &mail));
         } else {
-            print!("{}", render::terminal::render(&report, args.no_color, lang));
+            if args.markdown {
+                print!("{}", render::markdown::to_markdown(&report, lang));
+            } else {
+                print!("{}", render::terminal::render(&report, args.no_color, lang));
+            }
             if !probes.is_empty() { println!("\n{}", probe::render_section(&probes, lang)); }
+            if !mail.is_empty() { println!("\n{}", probe::mail::render_section(&mail, lang)); }
         }
     }
 }

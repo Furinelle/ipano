@@ -4,6 +4,23 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.7.0] - 2026-06-12
+
+P7:邮局连通性检测。
+
+### 新增
+
+- **邮局连通性探测**:`probe::mail` 用 tokio TCP 并发探测 Gmail/Outlook/QQ/Yahoo/Apple 的 SMTP 25/465/587 端口连通性,超时即视为不通
+- **`--mail` 开关**:从本机出口发起、与查询 IP 无关、只跑一次;贯通终端、Markdown、JSON(`mail` 数组)
+- Cargo:tokio 启用 `net`+`time` feature(TcpStream/timeout)
+
+### 说明
+
+- VPS 出站 25 端口常被服务商封锁,本检测可一眼看出哪些邮局哪些端口可达
+- 默认关闭,需显式 `--mail`(主动外发 TCP 连接 + 增加延迟)
+
+[0.7.0]: https://github.com/Furinelle/ipano/releases/tag/v0.7.0
+
 ## [0.6.0] - 2026-06-12
 
 P6:流媒体 + AI 解锁检测。

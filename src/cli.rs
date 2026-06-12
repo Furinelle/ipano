@@ -23,6 +23,9 @@ pub struct Args {
     /// 启用解锁检测(主动探测 Netflix/YouTube/ChatGPT,从本机出口发起)
     #[arg(long)]
     pub probe: bool,
+    /// 启用邮局连通性检测(TCP 连 SMTP 25/465/587 到主流邮局)
+    #[arg(long)]
+    pub mail: bool,
     /// 关闭彩色
     #[arg(long)]
     pub no_color: bool,
