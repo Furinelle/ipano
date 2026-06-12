@@ -29,6 +29,9 @@ pub struct Args {
     /// 启用三网回程路由(原生 traceroute 到 电信/联通/移动 参考节点;需 root/cap_net_raw,无特权自动降级)
     #[arg(long)]
     pub route: bool,
+    /// 启用 DNSBL 黑名单检测(12 个主流邮件/滥用黑名单,仅 IPv4)
+    #[arg(long)]
+    pub dnsbl: bool,
     /// ping0 token(浏览器解 Turnstile 验证码后从 cookie 复制,60 秒内有效);
     /// 不提供则 ping0 源自动降级。也可用环境变量 IPANO_PING0_TOKEN
     #[arg(long)]

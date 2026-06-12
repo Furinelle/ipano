@@ -4,6 +4,18 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.13.0] - 2026-06-13
+
+P13:DNSBL 黑名单检测(12 个主流邮件/滥用黑名单,并发 DNS 查询)。
+
+### 新增
+
+- **`--dnsbl` 标志**:针对当前查询 IP(仅 IPv4)并发检查 12 个主流 DNSBL 黑名单——zen.spamhaus.org / bl.spamcop.net / b.barracudacentral.org / cbl.abuseat.org / dnsbl.sorbs.net / spam.dnsbl.sorbs.net / dnsbl-1.uceprotect.net / dnsbl-2.uceprotect.net / dnsbl.dronebl.org / psbl.surriel.com / bl.0spam.org / ips.backscatterer.org
+- 检测原理:将 IPv4 反转后追加 DNSBL 域名(如 `4.3.2.1.zen.spamhaus.org`)做 DNS 查询;能解析 = 命中,NXDOMAIN/超时 = 清白;每个 DNSBL 4s 超时,全量并发,合计不超过 4s
+- 输出:comfy-table 包边表(命中数/总列表数 + 每条状态);`--markdown` 输出 pipe 表;`--json` 输出新增 `dnsbl[]` 字段
+
+[0.13.0]: https://github.com/Furinelle/ipano/releases/tag/v0.13.0
+
 ## [0.12.0] - 2026-06-13
 
 P11:流媒体解锁大扩(18 服务 + Region + Native/DNS 区分)。

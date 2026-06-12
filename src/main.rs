@@ -57,11 +57,22 @@ async fn main() {
     };
 
     for ip in targets {
+        // DNSBL 检测:针对当前查询 IP(仅 IPv4)
+        let dnsbl = if args.dnsbl {
+            if let IpAddr::V4(v4) = ip {
+                probe::dnsbl::check_all(v4).await
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        };
+
         let srcs = sources::all_sources(args.ping0_token.clone());
         let results = sources::run_all(&client, ip, &srcs).await;
         let report = aggregate::merge(ip, results);
         if args.json {
-            println!("{}", render::json::to_json(&report, &probes, &mail, &routes));
+            println!("{}", render::json::to_json(&report, &probes, &mail, &routes, &dnsbl));
         } else {
             if args.markdown {
                 print!("{}", render::markdown::to_markdown(&report, lang));
@@ -85,11 +96,18 @@ async fn main() {
                 println!("\n{}", s);
             }
             if !routes.is_empty() {
-                // 终端用 comfy-table 包边表,--markdown 用 pipe 表
                 let s = if args.markdown {
                     probe::route::render_section(&routes, lang)
                 } else {
                     probe::route::render_terminal(&routes, lang)
+                };
+                println!("\n{}", s);
+            }
+            if !dnsbl.is_empty() {
+                let s = if args.markdown {
+                    probe::dnsbl::render_section(&dnsbl, &ip.to_string(), lang)
+                } else {
+                    probe::dnsbl::render_terminal(&dnsbl, &ip.to_string(), lang)
                 };
                 println!("\n{}", s);
             }

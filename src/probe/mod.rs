@@ -7,6 +7,7 @@ pub mod streaming;
 pub mod ai;
 pub mod mail;
 pub mod route;
+pub mod dnsbl;
 
 /// 解锁探测结果状态
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

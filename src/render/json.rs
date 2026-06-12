@@ -3,8 +3,9 @@ use crate::aggregate::MergedReport;
 use crate::probe::ProbeResult;
 use crate::probe::mail::MailResult;
 use crate::probe::route::RouteResult;
+use crate::probe::dnsbl::DnsblResult;
 
-pub fn to_json(r: &MergedReport, probes: &[ProbeResult], mail: &[MailResult], routes: &[RouteResult]) -> String {
+pub fn to_json(r: &MergedReport, probes: &[ProbeResult], mail: &[MailResult], routes: &[RouteResult], dnsbl: &[DnsblResult]) -> String {
     let sources: Vec<_> = r.sources.iter().map(|s| json!({
         "id": s.id, "ok": s.ok, "error": s.error,
     })).collect();
@@ -41,6 +42,7 @@ pub fn to_json(r: &MergedReport, probes: &[ProbeResult], mail: &[MailResult], ro
         "probes": probes,
         "mail": mail,
         "route": routes,
+        "dnsbl": dnsbl,
     });
     serde_json::to_string_pretty(&v).unwrap()
 }
@@ -57,7 +59,7 @@ mod tests {
         let mut d = SourceData::new("ipsb");
         d.asn = Some(13335);
         let report = merge(ip, vec![("ipsb".to_string(), Ok(d))]);
-        let s = to_json(&report, &[], &[], &[]);
+        let s = to_json(&report, &[], &[], &[], &[]);
         assert!(s.contains("\"ip\""));
         assert!(s.contains("13335"));
     }
@@ -73,7 +75,7 @@ mod tests {
             label: "Suspicious".into(), confidence: 60, reasoning: "x".into(),
         });
         let report = merge(ip, vec![("netcoffee".to_string(), Ok(d))]);
-        let s = to_json(&report, &[], &[], &[]);
+        let s = to_json(&report, &[], &[], &[], &[]);
         assert!(s.contains("trust_score"));
         assert!(s.contains("\"is_tor\""));
         assert!(s.contains("ai_verdict"));
