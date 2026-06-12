@@ -7,6 +7,7 @@ mod render;
 mod cli;
 mod i18n;
 mod heuristics;
+mod probe;
 
 use std::net::IpAddr;
 use clap::Parser;
@@ -32,16 +33,25 @@ async fn main() {
         }
     };
 
+    // 解锁检测从本机出口发起,与查询 IP 无关,只跑一次
+    let probes = if args.probe {
+        probe::run_all(&client, &probe::all_probes()).await
+    } else {
+        Vec::new()
+    };
+
     for ip in targets {
         let srcs = sources::all_sources();
         let results = sources::run_all(&client, ip, &srcs).await;
         let report = aggregate::merge(ip, results);
         if args.json {
-            println!("{}", render::json::to_json(&report));
+            println!("{}", render::json::to_json(&report, &probes));
         } else if args.markdown {
-            println!("{}", render::markdown::to_markdown(&report, lang));
+            print!("{}", render::markdown::to_markdown(&report, lang));
+            if !probes.is_empty() { println!("\n{}", probe::render_section(&probes, lang)); }
         } else {
-            println!("{}", render::terminal::render(&report, args.no_color, lang));
+            print!("{}", render::terminal::render(&report, args.no_color, lang));
+            if !probes.is_empty() { println!("\n{}", probe::render_section(&probes, lang)); }
         }
     }
 }
