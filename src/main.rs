@@ -44,13 +44,19 @@ async fn main() {
     } else {
         Vec::new()
     };
+    // 三网回程路由从本机出口发起(仅 IPv4),与查询 IP 无关,只跑一次;无特权自动降级
+    let routes = if args.route {
+        probe::route::run_routes(&client, args.timeout).await
+    } else {
+        Vec::new()
+    };
 
     for ip in targets {
         let srcs = sources::all_sources(args.ping0_token.clone());
         let results = sources::run_all(&client, ip, &srcs).await;
         let report = aggregate::merge(ip, results);
         if args.json {
-            println!("{}", render::json::to_json(&report, &probes, &mail));
+            println!("{}", render::json::to_json(&report, &probes, &mail, &routes));
         } else {
             if args.markdown {
                 print!("{}", render::markdown::to_markdown(&report, lang));
@@ -59,6 +65,7 @@ async fn main() {
             }
             if !probes.is_empty() { println!("\n{}", probe::render_section(&probes, lang)); }
             if !mail.is_empty() { println!("\n{}", probe::mail::render_section(&mail, lang)); }
+            if !routes.is_empty() { println!("\n{}", probe::route::render_section(&routes, lang)); }
         }
     }
 }
