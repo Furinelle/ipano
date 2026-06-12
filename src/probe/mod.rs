@@ -6,6 +6,7 @@ use futures::future::join_all;
 pub mod streaming;
 pub mod ai;
 pub mod mail;
+pub mod route;
 
 /// 解锁探测结果状态
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

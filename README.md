@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-**v0.8.0 — P8 ping0 token 手动复用**。新增 `--ping0-token`,在浏览器解 ping0 验证码后提供 token 即可复用,否则该源降级;三网回程路由(需 root)在后续阶段交付(见[路线图](#路线图))。
+**v0.9.0 — P9 三网回程路由**。新增 `--route`,从本机出口对 电信/联通/移动 参考节点发起原生 ICMP traceroute,逐跳标注 AS/归属并按骨干 ASN 启发式识别回程线路(CN2/163/169/9929/CMI 等)。优先用免特权 ICMP DGRAM socket(macOS 即开即用),Linux 需 root/`cap_net_raw`,无特权时该模块自动降级,不影响其余检测。
 
 ## 功能(当前版本)
 
@@ -21,6 +21,7 @@
 - **Markdown 导出 + 中英 i18n**:`--markdown` 输出可粘贴的报告,`--lang en` 切换英文
 - **解锁检测(`--probe`)**:从本机出口主动探测 Netflix、YouTube Premium、ChatGPT 的解锁状态与地区,失败标注未知不伪造
 - **邮局连通性(`--mail`)**:TCP 连 SMTP 25/465/587 探测到 Gmail/Outlook/QQ/Yahoo/Apple 的端口连通(VPS 25 端口常被封,一眼可见)
+- **三网回程路由(`--route`)**:原生 Rust ICMP traceroute 到 电信/联通/移动 北京参考节点,每跳复用 ip-api 标注 AS/归属,按骨干 ASN(CN2 AS4809 / 163 AS4134 / 169 AS4837 / 9929 / CMI AS58453 / CMNET AS9808 等)启发式识别回程线路类型与质量档(优质/普通);需 root/`cap_net_raw`,无特权自动降级
 
 ## 安装与构建
 
@@ -46,6 +47,7 @@ ipano --lang en        # 英文输出(结论/对比/Markdown)
 ipano --probe          # 解锁检测(Netflix/YouTube/ChatGPT)
 ipano --mail           # 邮局连通性(SMTP 25/465/587)
 ipano --ping0-token <TOKEN>   # 复用浏览器解出的 ping0 token(60 秒内有效)
+ipano --route          # 三网回程路由(原生 traceroute,需 root/cap_net_raw)
 ipano --no-color       # 关闭彩色
 ipano --timeout 5      # 单源超时(秒,默认 8)
 ```
@@ -72,6 +74,8 @@ ipano --timeout 5      # 单源超时(秒,默认 8)
 
 **关于 ping0.cc**:ping0 现已被 Cloudflare Turnstile 验证码全站接管,且其 token 60 秒过期,无法程序化抓取(强行绕过验证码不在本工具范围)。ipano 仅支持 **cookie 复用**:在浏览器中解开 ping0 验证码后,把 `token` cookie 值通过环境变量 `IPANO_PING0_TOKEN` 提供(60 秒内有效),ipano 会在该窗口内复用;未提供或已失效时,ping0 源自动标注降级,不影响其它源。
 
+**关于三网回程路由(`--route`)**:原生 ICMP traceroute 需 raw/dgram socket。ipano 优先用免特权 ICMP DGRAM socket(macOS 即可、Linux 受 `net.ipv4.ping_group_range` 许可时可),失败回退 raw socket(需 root/`cap_net_raw`),两者皆不可用时该模块整体降级标注「需 root 运行」,不影响其余检测。回程线路识别基于骨干 ASN 表,结果为**启发式**,仅供参考(CN2 GIA/GT 的细分需进一步看 59.43 节点,当前统一标 CN2)。当前仅 IPv4。
+
 ## 路线图
 
 | 阶段 | 内容 | 状态 |
@@ -85,7 +89,7 @@ ipano --timeout 5      # 单源超时(秒,默认 8)
 | P6 | **解锁检测**(Netflix/YouTube/ChatGPT,`--probe`)| ✅ |
 | P7 | **邮局连通性**(SMTP 25/465/587,`--mail`)| ✅ |
 | P8 | **ping0 token 手动复用**(`--ping0-token`,浏览器解验证码后提供,否则降级)| ✅ |
-| P9 | 三网回程路由(原生 Rust traceroute + 回程线路识别,需 root)| 计划中 |
+| P9 | **三网回程路由**(原生 Rust traceroute + 三网节点表 + 回程线路识别 + 每跳 AS/geo 标注,`--route`,需 root,无特权降级)| ✅ |
 
 完整设计见 [`docs/superpowers/specs/2026-06-11-ipano-design.md`](docs/superpowers/specs/2026-06-11-ipano-design.md);地基实现计划见 [`docs/superpowers/plans/2026-06-11-ipano-foundation.md`](docs/superpowers/plans/2026-06-11-ipano-foundation.md)。
 

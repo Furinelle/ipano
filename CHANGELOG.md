@@ -4,6 +4,29 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.9.0] - 2026-06-12
+
+P9:三网回程路由(原生 traceroute)。
+
+### 新增
+
+- **原生 ICMP traceroute 引擎**:`probe::route` 用 libc raw/dgram socket 自行构造 ICMP Echo、按 TTL 递增逐跳探测,解析 Time Exceeded/Echo Reply 并按 seq 归位每跳;无第三方 traceroute 依赖
+- **三网参考节点**:对 电信(北京 219.141.136.12)/联通(202.106.50.1)/移动(211.136.25.153)三网骨干节点各发一条 trace,从本机出口发起、与查询 IP 无关、只跑一次
+- **逐跳 AS/geo 标注**:一次 ip-api `/batch` 请求标注路径上所有公网跳的 ASN/组织/国家/城市(跳过私网/CGNAT/198.18 基准段)
+- **回程线路启发式识别**:按骨干 ASN 表(CN2 AS4809、163 AS4134、169 AS4837、9929/CUII AS9929、CUG AS10099、CMI AS58453、CMNET AS9808)识别各运营商回程线路类型与质量档(优质/普通)
+- **`--route` 开关**:贯通终端、Markdown、JSON(`route` 数组,含逐跳明细与线路判定);末尾连续无应答跳自动截断,避免一长串 `*`
+- **优雅降级**:优先免特权 ICMP DGRAM socket(macOS 即可、Linux 受 `ping_group_range` 许可时可),失败回退 raw socket(需 root/`cap_net_raw`),两者皆不可用时该条降级标注「需 root 运行」,不阻塞其余功能
+- Cargo:新增 `libc` 依赖(raw/dgram socket 系统调用)
+
+### 说明
+
+- **仅 IPv4**:P9 暂只做 IPv4 traceroute(ICMPv6 后续);线路识别结果均为启发式,仅供参考
+- CN2 GIA/GT 的细分需进一步看 59.43 节点,当前统一标 CN2,后续可细化
+- socket I/O 无法 mock 单测,纯逻辑(报文构造/解析/线路识别/渲染/公网过滤)以 13 个单元测试覆盖,真发包靠集成运行验证
+- 默认关闭,需显式 `--route`(主动外发 ICMP + 需特权)
+
+[0.9.0]: https://github.com/Furinelle/ipano/releases/tag/v0.9.0
+
 ## [0.8.0] - 2026-06-12
 
 P8:ping0 token 手动复用。
