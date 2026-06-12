@@ -280,6 +280,12 @@ pub fn render_section(routes: &[RouteResult], lang: Lang) -> String {
                 r.line.label(lang), r.line.quality(lang), r.hops.len()).ok();
         }
     }
+    if routes.iter().any(|r| r.degraded.is_some()) {
+        writeln!(out, "\n> {}", lang.pick(
+            "部分目标因无特权已降级:用 `sudo ipano --route`,或先 `sudo setcap cap_net_raw+ep <二进制>` 一次后免 sudo",
+            "Some targets degraded (no privilege): run `sudo ipano --route`, or `sudo setcap cap_net_raw+ep <binary>` once to avoid sudo",
+        )).ok();
+    }
     out.push('\n');
 
     // 每条 trace 的逐跳明细(仅非降级)
@@ -433,6 +439,8 @@ mod tests {
         assert!(s.contains("三网回程路由"));
         assert!(s.contains("需 root 运行"));
         assert!(s.contains("北京电信"));
+        // 有降级目标时应给出 sudo 重试提示
+        assert!(s.contains("sudo"));
     }
 
     #[test]
