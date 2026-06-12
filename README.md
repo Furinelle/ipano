@@ -2,6 +2,9 @@
 
 > **IP + Panorama** —— 一站式 IP 全景聚合检测工具。一个 IP,全景体检。
 
+[![Release](https://img.shields.io/github/v/release/Furinelle/ipano?logo=github&label=release)](https://github.com/Furinelle/ipano/releases/latest)
+[![Build](https://github.com/Furinelle/ipano/actions/workflows/release.yml/badge.svg)](https://github.com/Furinelle/ipano/actions/workflows/release.yml)
+
 `ipano` 是一个用 Rust 编写的命令行工具,把多个 IP 信息源聚合到一份报告里:基础归属、ASN、IP 类型、风险/纯净度、代理标记等。编译为**单个静态二进制**,在 VPS 上下载即用,零运行时依赖。
 
 ## 当前状态
