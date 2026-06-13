@@ -13,13 +13,18 @@ struct Resp {
 
 pub fn parse(body: &str) -> Result<SourceData, SourceError> {
     let r: Resp = serde_json::from_str(body).map_err(|e| SourceError::Parse(e.to_string()))?;
+    // status=error 优先于数值解析:出错时 result 可能非数值,先判状态才能给出准确错误
+    if r.status.as_deref() == Some("error") {
+        return Err(SourceError::Unavailable("getipintel 返回 error 状态".into()));
+    }
     let prob: f64 = r.result.as_deref().and_then(|s| s.parse().ok())
         .ok_or_else(|| SourceError::Parse("getipintel result 非数值".into()))?;
-    if r.status.as_deref() == Some("error") || prob < 0.0 {
+    if prob < 0.0 {
         return Err(SourceError::Unavailable(format!("getipintel 错误码 {prob}")));
     }
     let mut d = SourceData::new("ipintel");
     d.risk_score = Some((prob * 100.0).round() as i64);
+    // getipintel 官方推荐:概率 >= 0.95 视为高置信度代理/VPN
     d.is_proxy = Some(prob >= 0.95);
     Ok(d)
 }
