@@ -90,11 +90,11 @@ pub fn merge(ip: IpAddr, results: Vec<(String, SourceResult)>) -> MergedReport {
     m
 }
 
-/// 多数决:多源布尔取多数;平票或无值返回 None。少数派由渲染层另行展示。
+/// 多数决:多源布尔取多数;无值返回 None,平票取保守的 false(与 spec 一致)。少数派由渲染层另行展示。
 fn majority_bool(ok: &[SourceData], f: impl Fn(&SourceData) -> Option<bool>) -> Option<bool> {
     let (mut t, mut fa) = (0u32, 0u32);
     for d in ok { match f(d) { Some(true) => t += 1, Some(false) => fa += 1, None => {} } }
-    if t == 0 && fa == 0 { None } else if t > fa { Some(true) } else if fa > t { Some(false) } else { Some(false) }
+    if t == 0 && fa == 0 { None } else if t > fa { Some(true) } else { Some(false) }
 }
 
 #[cfg(test)]
