@@ -3,6 +3,7 @@ pub mod ipwhois;
 pub mod dbip;
 pub mod ipquery;
 pub mod ipapiis;
+pub mod ipapicom;
 pub mod ipinfo;
 pub mod ipsb;
 pub mod netcoffee;
