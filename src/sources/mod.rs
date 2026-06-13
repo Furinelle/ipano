@@ -13,6 +13,7 @@ pub mod ippure;
 pub mod abuseipdb;
 pub mod ipqs;
 pub mod ipregistry;
+pub mod virustotal;
 
 use std::net::IpAddr;
 use async_trait::async_trait;
@@ -64,6 +65,7 @@ pub fn all_sources(ping0_token: Option<String>) -> Vec<Box<dyn Source>> {
         Box::new(ipapicom::IpApiCom::default()),
         Box::new(ip2location::Ip2Location::default()),
         Box::new(ipregistry::IpRegistry::default()),
+        Box::new(virustotal::VirusTotal::default()),
     ]
 }
 
@@ -109,6 +111,12 @@ mod tests {
     fn all_sources_includes_ipreg() {
         let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
         assert!(ids.contains(&"ipreg"));
+    }
+
+    #[test]
+    fn all_sources_includes_vt() {
+        let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
+        assert!(ids.contains(&"vt"));
     }
 
     #[test]
