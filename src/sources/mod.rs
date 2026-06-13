@@ -56,6 +56,12 @@ pub fn all_sources(ping0_token: Option<String>) -> Vec<Box<dyn Source>> {
         Box::new(ippure::IpPure::default()),
         Box::new(abuseipdb::AbuseIpdb::default()),
         Box::new(ipqs::Ipqs::default()),
+        Box::new(ipwhois::IpWhois::default()),
+        Box::new(dbip::DbIp::default()),
+        Box::new(ipquery::IpQuery::default()),
+        Box::new(ipapiis::IpApiIs::default()),
+        Box::new(ipapicom::IpApiCom::default()),
+        Box::new(ip2location::Ip2Location::default()),
     ]
 }
 
@@ -95,5 +101,14 @@ mod tests {
         assert!(ids.contains(&"ipinfo"));
         assert!(ids.contains(&"ipsb"));
         assert!(ids.contains(&"netcoffee"));
+    }
+
+    #[test]
+    fn all_sources_includes_phase1() {
+        let s = all_sources(None);
+        let ids: Vec<&str> = s.iter().map(|x| x.id()).collect();
+        for id in ["ipwhois", "dbip", "ipquery", "ipapiis", "ipapicom", "ip2loc"] {
+            assert!(ids.contains(&id), "缺少源 {id}");
+        }
     }
 }
