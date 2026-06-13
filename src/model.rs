@@ -53,6 +53,12 @@ pub struct SourceData {
     // —— P4 西方欺诈库(各源独立保留)——
     pub abuseipdb_score: Option<i64>,  // 滥用置信度 0-100(AbuseIPDB,需 key)
     pub ipqs_score: Option<i64>,       // 欺诈分 0-100(IPQS,需 key)
+    // —— 阶段一 多源质量字段 ——
+    pub usage_type: Option<String>,       // Commercial/hosting/business/ISP
+    pub company_type: Option<String>,     // isp/hosting/business
+    pub asn_abuse_score: Option<f64>,     // ipapi.is ASN 滥用分
+    pub company_abuse_score: Option<f64>, // ipapi.is 公司滥用分
+    pub is_datacenter: Option<bool>,
 }
 
 impl SourceData {
@@ -111,6 +117,19 @@ mod tests {
         });
         assert_eq!(d.trust_score, Some(41));
         assert_eq!(d.ai_verdict.as_ref().unwrap().confidence, 60);
+    }
+
+    #[test]
+    fn sourcedata_has_quality_fields() {
+        let mut d = SourceData::new("ipapiis");
+        d.usage_type = Some("hosting".into());
+        d.company_type = Some("hosting".into());
+        d.asn_abuse_score = Some(0.0131);
+        d.company_abuse_score = Some(0.015);
+        d.is_datacenter = Some(true);
+        assert_eq!(d.usage_type.as_deref(), Some("hosting"));
+        assert_eq!(d.asn_abuse_score, Some(0.0131));
+        assert_eq!(d.is_datacenter, Some(true));
     }
 
     #[test]

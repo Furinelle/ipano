@@ -41,6 +41,12 @@ pub struct MergedReport {
     pub fraud_score: Option<i64>,
     pub abuseipdb_score: Option<i64>,
     pub ipqs_score: Option<i64>,
+    // —— 阶段一 多源质量字段 ——
+    pub usage_type: Option<String>,
+    pub company_type: Option<String>,
+    pub asn_abuse_score: Option<f64>,
+    pub company_abuse_score: Option<f64>,
+    pub is_datacenter: Option<bool>,
     pub sources: Vec<SourceStatus>,
     /// 各成功源的原始数据(供横向对比表)
     pub raw: Vec<SourceData>,
@@ -77,8 +83,18 @@ pub fn merge(ip: IpAddr, results: Vec<(String, SourceResult)>) -> MergedReport {
     pick!(trust_score); pick!(risk_score); pick!(abuser_score); pick!(rep_threat);
     pick!(ai_verdict); pick!(is_abuser); pick!(is_crawler); pick!(is_mobile); pick!(is_residential);
     pick!(fraud_score); pick!(abuseipdb_score); pick!(ipqs_score);
+    pick!(usage_type); pick!(company_type);
+    pick!(asn_abuse_score); pick!(company_abuse_score);
+    m.is_datacenter = majority_bool(&ok, |d| d.is_datacenter);
     m.raw = ok;
     m
+}
+
+/// 多数决:多源布尔取多数;平票或无值返回 None。少数派由渲染层另行展示。
+fn majority_bool(ok: &[SourceData], f: impl Fn(&SourceData) -> Option<bool>) -> Option<bool> {
+    let (mut t, mut fa) = (0u32, 0u32);
+    for d in ok { match f(d) { Some(true) => t += 1, Some(false) => fa += 1, None => {} } }
+    if t == 0 && fa == 0 { None } else if t > fa { Some(true) } else if fa > t { Some(false) } else { Some(false) }
 }
 
 #[cfg(test)]
@@ -108,6 +124,18 @@ mod tests {
         assert_eq!(m.sources.len(), 3);
         let failed = m.sources.iter().find(|s| s.id == "ipapi").unwrap();
         assert!(!failed.ok);
+    }
+
+    #[test]
+    fn merge_datacenter_majority() {
+        let ip = "1.1.1.1".parse().unwrap();
+        let mk = |id: &str, dc: bool| { let mut d = SourceData::new(id); d.is_datacenter = Some(dc); d };
+        let m = merge(ip, vec![
+            ("bdc".into(), Ok(mk("bdc", true))),
+            ("ipapiis".into(), Ok(mk("ipapiis", true))),
+            ("ip2loc".into(), Ok(mk("ip2loc", false))),
+        ]);
+        assert_eq!(m.is_datacenter, Some(true)); // 2:1 多数
     }
 
     #[test]

@@ -9,12 +9,15 @@
 
 ## 当前状态
 
+**v0.17.0 — IP 质量多源扩充 阶段一(免key源)**。默认报告新接入 6 个免key源(ipwhois.io / db-ip / ipquery.io / **ipapi.is(ASN/公司滥用分)** / ipapi.co / ip2location.io),新增 使用类型/公司类型/ASN·公司滥用分/是否数据中心 字段;多源布尔(数据中心等)合并改**多数决**;新增 `--raw` 逐源详表(每字段标 `[源缩写]`,直观看源间分歧);`--dnsbl` 黑名单从 12 扩到 **211** 条。对标 [oneclickvirt/securityCheck](https://github.com/oneclickvirt/securityCheck)。
+
 **v0.16.0 — 三网回国 + 国际测速重做**。`--speedtest` 不再下载国际 CDN，改为对 **speedtest.net 三网(电信/联通/移动)+ 香港 + 教育/广电 + 国际(美/日/新)** 服务器测 **延迟 + 下载 + 上传**(host 运行时按 server id 解析，适配各 vantage）。可选 `--speedtest=cn/ct/cu/cm/hk/edu/intl/us/jp/sg/all`、server id 列表或 `=list` 看全部可选节点，逗号可组合；不带值=默认 6 代表(港·沪联通·京联通·苏电信·浙电信·沪移动)。单连接单流，结果仅供参考。⚠️ 破坏性:旧 `[[speedtest]] {name,url}` 配置改为 `[speedtest] spec` + `[[speedtest.custom]]`。v0.14.x(P14)：`-A`/`--all` 同时启用 --probe/--mail/--route/--dnsbl；配置文件 `~/.config/ipano/config.toml` 持久化语言/超时/常开模块/ping0 token，CLI 参数优先覆盖。`--dnsbl` 对当前查询 IPv4 并发检查 12 个主流邮件/滥用黑名单(Spamhaus ZEN / SpamCop / Barracuda / CBL / SORBS / UCEProtect / DroneBL 等),DNS 反向查询 4s 超时,结果 comfy-table 呈现。v0.12.0(P11)：`--probe` 从 3 项扩为 **19 项**(Netflix · YouTube Premium · Disney+ · HBO Max · Hulu · Prime Video · Bilibili CN · Bilibili HK/TW · AbemaTV · DAZN · BBC iPlayer · Crunchyroll · Paramount+ · Peacock · Discovery+ · Spotify · TVB Anywhere+ · Funimation · ChatGPT),新增 **Region** 地区列与 **Native/DNS** 类型列(探针机地区 vs 内容地区自动对比),终端输出改为 comfy-table 包边表。
 
 ## 功能(当前版本)
 
 - **双查询模式**:无参数查本机出口 IP(IPv4/IPv6),带参数查任意指定 IP
 - **多源并发聚合**:同时查询 [ip-api](https://ip-api.com)、[ipinfo](https://ipinfo.io)、[ip.sb](https://ip.sb),单源失败自动降级、不拖垮整体
+- **多源 IP 质量(免key 6 源)**:[ipwhois.io](https://ipwhois.io)/[db-ip](https://db-ip.com)/[ipquery.io](https://ipquery.io)/**[ipapi.is](https://ipapi.is)(ASN/公司滥用分)**/[ipapi.co](https://ipapi.co)/[ip2location.io](https://www.ip2location.io) 并进默认报告,新增 使用类型/公司类型/ASN·公司滥用分/是否数据中心;多源布尔多数决合并,`--raw` 看每字段逐源 `[源缩写]` 取值(对标 securityCheck)
 - **混合式合并**:基础字段按源优先级去重合一,报告标注各源成功/失败状态
 - **双输出**:彩色终端报告 + 机器可读 JSON
 - **风险/纯净度**:接入 ip.net.coffee `iprisk` 接口,呈现纯净度、滥用评分、信誉威胁值、AI 判定及代理/VPN/Tor/机房等标记
@@ -25,7 +28,7 @@
 - **三网回国 + 国际测速(`--speedtest`)**:对 speedtest.net 三网(电信/联通/移动)+ 香港 + 教育/广电 + 国际(美/日/新)服务器测 **延迟 + 下载 + 上传**;`--speedtest=list` 看全部可选节点,`=cn/ct/cu/cm/hk/edu/intl/us/jp/sg/all` 或 server id 列表选择(逗号可组合),不带值=默认 6 代表;host 运行时按 server id 解析;速率/延迟着色;配置文件 `[speedtest] spec` 设默认、`[[speedtest.custom]]` 加自定义节点;单连接单流仅供参考,因耗流量较大不含在 --all 内
 - **一键全跑(`-A` / `--all`)**:同时启用 --probe/--mail/--route/--dnsbl,VPS 上线后一条命令完成全景体检(测速因耗流量需单独 --speedtest)
 - **配置文件(`~/.config/ipano/config.toml`)**:持久化 lang/timeout/no_color/ping0_token 及各模块常开(always.probe/mail/route/dnsbl);CLI 参数优先覆盖;文件不存在时静默跳过
-- **DNSBL 黑名单检测(`--dnsbl`)**:并发查询 12 个主流 DNSBL(Spamhaus ZEN/SpamCop/Barracuda/CBL/SORBS/UCEProtect L1-L2/DroneBL/PSBL/0Spam/Backscatterer);DNS 反向查询(IPv4 反转追加 DNSBL 域名),4s 超时;comfy-table 展示命中数与每条状态;`--markdown` pipe 表;`--json` 含 `dnsbl[]` 字段;IPv6 返回空跳过
+- **DNSBL 黑名单检测(`--dnsbl`)**:并发查询 **211 个** DNSBL(Spamhaus/SpamCop/Barracuda/CBL/SORBS/UCEProtect/DroneBL/SpamRATS/Mailspike/Abusix 等,来源 fnando/email_data);DNS 反向查询(IPv4 反转追加 DNSBL 域名),每条 4s 超时;comfy-table 展示命中数与每条状态;`--markdown` pipe 表;`--json` 含 `dnsbl[]` 字段;IPv6 返回空跳过
 - **解锁检测(`--probe`)**:19 项并发探测(Netflix/Disney+/HBO Max/Hulu/Prime Video/Bilibili CN/HK·TW/AbemaTV/DAZN/BBC iPlayer/Crunchyroll/Paramount+/Peacock/Discovery+/Spotify/TVB Anywhere+/Funimation/YouTube Premium/ChatGPT);返回解锁状态、地区码(有 API 的服务)及 Native/DNS 类型(探针机地区 vs 内容地区对比);comfy-table 包边表呈现,`--markdown` 输出 pipe 表
 - **邮件端口连通性(`--mail`)**:6 协议矩阵 SMTP/SMTPS/POP3/POP3S/IMAP/IMAPS × 15 家邮局(Gmail/Outlook/Office365/Yahoo/Apple/QQ/163/Sina/Sohu/Yandex/Zoho/GMX/MailRU/AOL/FastMail),包边表呈现(VPS 25 端口常被封,一眼可见)
 - **三网回程路由(`--route`)**:原生 Rust ICMP traceroute 到 电信/联通/移动 × 北京/上海/广州/成都 12 个参考节点(单 socket 并行),每跳复用 ip-api 标注 AS/归属,按骨干 ASN(CN2 AS4809 / 163 AS4134 / 169 AS4837 / 9929 / CMIN2 AS58807 / CMI AS58453 / CMNET AS9808 等)启发式识别回程线路类型与质量档(优质/普通),并对电信 CN2 细分 GIA/GT;需 root/`cap_net_raw`,无特权自动降级
@@ -70,12 +73,13 @@ ipano -4               # 仅 IPv4
 ipano -6               # 仅 IPv6
 ipano --json 8.8.8.8   # 输出 JSON
 ipano --markdown 1.1.1.1   # 输出 Markdown(含各源对比表 + 启发式结论)
+ipano --raw 1.1.1.1    # 逐源原始详表(每字段标 [源缩写],对标 securityCheck)
 ipano --lang en        # 英文输出(结论/对比/Markdown)
 ipano --probe          # 解锁检测(19 服务,含 Region + Native/DNS 类型)
 ipano --mail           # 邮件端口连通性(6 协议 × 15 家邮局矩阵)
 ipano --ping0-token <TOKEN>   # 复用浏览器解出的 ping0 token(60 秒内有效)
 ipano --route          # 三网回程路由(原生 traceroute,需 root/cap_net_raw)
-ipano --dnsbl          # DNSBL 黑名单检测(12 个主流列表,仅 IPv4)
+ipano --dnsbl          # DNSBL 黑名单检测(211 个列表,并发,仅 IPv4)
 ipano -A               # 一键全跑(--probe + --mail + --route + --dnsbl)
 ipano --speedtest      # 三网回国+国际测速(延迟+下载+上传,默认 6 代表,耗流量,不含在 --all)
 ipano --speedtest=list # 列出全部可选测速节点(三网/港/教育/美日新)
@@ -156,12 +160,13 @@ main → cli → orchestrator
    ├─ fetch        共享 reqwest 客户端
    ├─ sources/     IP 信息源:每源一个文件,统一 Source trait,并发抓取
    │               ip-api · ipinfo · ip.sb · ip.net.coffee · ippure · ping0 · AbuseIPDB · IPQS
+   │               · ipwhois · db-ip · ipquery · ipapi.is · ipapi.co · ip2location(免key质量扩充)
    ├─ probe/       主动探测(从本机出口发起,与查询 IP 无关,各自只跑一次):
    │               streaming/ai(解锁)· mail(SMTP 连通)· route(原生 traceroute 三网回程)
    │               · dnsbl(黑名单)· speedtest(三网回国+国际测速)
    ├─ aggregate    按优先级合并多源 → MergedReport
    ├─ heuristics   启发式风险结论
-   └─ render/      terminal(彩色表)· json · markdown
+   └─ render/      terminal(彩色表)· json · markdown · raw(逐源详表)
 ```
 
 新增数据源 = 加一个实现 `Source` trait 的文件并在 `all_sources()` 注册;新增探测器 = 在 `probe/` 加一个模块并在编排处接线 —— 都不动其它代码。

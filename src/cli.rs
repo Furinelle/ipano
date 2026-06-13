@@ -17,6 +17,9 @@ pub struct Args {
     /// 输出 Markdown(含各源对比表 + 启发式结论)
     #[arg(long)]
     pub markdown: bool,
+    /// 逐源原始详表(securityCheck 同款,每字段标来源)
+    #[arg(long)]
+    pub raw: bool,
     /// 输出语言:zh(默认)或 en;未指定时回落到配置文件,再回落到 zh
     #[arg(long)]
     pub lang: Option<String>,
@@ -32,7 +35,7 @@ pub struct Args {
     /// 启用三网回程路由(原生 traceroute 到 电信/联通/移动 参考节点;需 root/cap_net_raw,无特权自动降级)
     #[arg(long)]
     pub route: bool,
-    /// 启用 DNSBL 黑名单检测(12 个主流邮件/滥用黑名单,仅 IPv4)
+    /// 启用 DNSBL 黑名单检测(211 个邮件/滥用黑名单,并发查询,仅 IPv4)
     #[arg(long)]
     pub dnsbl: bool,
     /// 多节点测速(对 speedtest.net 三网/国际节点测 延迟+下载+上传,从本机出口发起);

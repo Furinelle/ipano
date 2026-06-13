@@ -39,6 +39,11 @@ pub fn to_json(r: &MergedReport, probes: &[ProbeResult], mail: &[MailResult], ro
         "fraud_score": r.fraud_score,
         "abuseipdb_score": r.abuseipdb_score,
         "ipqs_score": r.ipqs_score,
+        "usage_type": r.usage_type,
+        "company_type": r.company_type,
+        "asn_abuse_score": r.asn_abuse_score,
+        "company_abuse_score": r.company_abuse_score,
+        "is_datacenter": r.is_datacenter,
         "sources": sources,
         "probes": probes,
         "mail": mail,
@@ -82,5 +87,22 @@ mod tests {
         assert!(s.contains("\"is_tor\""));
         assert!(s.contains("ai_verdict"));
         assert!(s.contains("Suspicious"));
+    }
+
+    #[test]
+    fn json_contains_quality_fields() {
+        let ip = "1.1.1.1".parse().unwrap();
+        let mut d = SourceData::new("ipapiis");
+        d.usage_type = Some("DCH".into());
+        d.company_type = Some("hosting".into());
+        d.asn_abuse_score = Some(0.0131);
+        d.company_abuse_score = Some(0.015);
+        d.is_datacenter = Some(true);
+        let report = merge(ip, vec![("ipapiis".to_string(), Ok(d))]);
+        let s = to_json(&report, &[], &[], &[], &[], &[]);
+        assert!(s.contains("usage_type"));
+        assert!(s.contains("asn_abuse_score"));
+        assert!(s.contains("company_abuse_score"));
+        assert!(s.contains("is_datacenter"));
     }
 }

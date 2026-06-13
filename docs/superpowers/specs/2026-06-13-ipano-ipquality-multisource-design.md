@@ -49,7 +49,7 @@ probe/dnsbl.rs      DNSBL 列表 12 → ~300
 |---|---|---|---|
 | `ipwhois` | ipwhois.io | `http://ipwho.is/<ip>` | 国家/ASN/isp/类型(is proxy/hosting) |
 | `dbip` | db-ip.com | `https://api.db-ip.com/v2/free/<ip>` | 国家/城市/ASN |
-| `bdc` | bigdatacloud | `https://api.bigdatacloud.net/data/ip-geolocation-full?ip=<ip>` 免key tier | 地理/是否数据中心/危险性 |
+| `ipquery` | ipquery.io | `https://api.ipquery.io/<ip>` 免key | 地理/ASN/**VPN/代理/Tor/是否数据中心/风险分**(v0.17.0 实测顶替 bdc) |
 | `ipapiis` | ipapi.is | `https://api.ipapi.is/?q=<ip>` 免key限额 | **ASN/公司滥用分**、是否数据中心/代理/VPN/滥用 |
 | `ipapicom` | ipapi.com | `https://ipapi.co/<ip>/json/` 免key限额 | 地理/ASN/org |
 | `ip2loc` | ip2location.io | `https://api.ip2location.io/?ip=<ip>` 免key限额 | 使用类型/代理/类型 |
@@ -58,6 +58,7 @@ probe/dnsbl.rs      DNSBL 列表 12 → ~300
 
 | 缩写 | 源 | key env | 提供字段 |
 |---|---|---|---|
+| `bdc` | bigdatacloud | `IPANO_BDC_KEY`(免费注册 ~10k/月) | 地理/是否数据中心/危险性。**任意-IP 端点需 key**(v0.17.0 实测免key返 403,故从阶段一移入此处;阶段一已由 ipquery 顶替) |
 | `scam` | scamalytics | `IPANO_SCAMALYTICS_KEY`(+user) | 欺诈分/代理判定 |
 | `ipreg` | ipregistry | `IPANO_IPREGISTRY_KEY` | 公司类型/是否云/中继/匿名/滥用 |
 | `ipdata` | ipdata.co | `IPANO_IPDATA_KEY` | **信任/VPN/代理/威胁得分**、blocklist |
