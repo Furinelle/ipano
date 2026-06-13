@@ -14,6 +14,7 @@ pub mod abuseipdb;
 pub mod ipqs;
 pub mod ipregistry;
 pub mod virustotal;
+pub mod getipintel;
 
 use std::net::IpAddr;
 use async_trait::async_trait;
@@ -66,6 +67,7 @@ pub fn all_sources(ping0_token: Option<String>) -> Vec<Box<dyn Source>> {
         Box::new(ip2location::Ip2Location::default()),
         Box::new(ipregistry::IpRegistry::default()),
         Box::new(virustotal::VirusTotal::default()),
+        Box::new(getipintel::GetIpIntel::default()),
     ]
 }
 
@@ -126,5 +128,11 @@ mod tests {
         for id in ["ipwhois", "dbip", "ipquery", "ipapiis", "ipapicom", "ip2loc"] {
             assert!(ids.contains(&id), "缺少源 {id}");
         }
+    }
+
+    #[test]
+    fn all_sources_includes_ipintel() {
+        let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
+        assert!(ids.contains(&"ipintel"));
     }
 }
