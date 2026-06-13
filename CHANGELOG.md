@@ -4,6 +4,20 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.16.0] - 2026-06-13
+
+`--speedtest` 重做为**三网回国 + 国际测速**(对标 superspeed.sh)。
+
+### 变更(破坏性)
+
+- **`--speedtest` 不再下载国际 CDN**,改为对 [speedtest.net](https://www.speedtest.net) 服务器测 **延迟 + 下载 + 上传**:
+  - 节点目录 40 个:三网(电信/联通/移动,来自 superspeed.sh)· 香港 · 教育/广电 · 国际(美/日/新)。
+  - host **运行时按 server id 解析**(`search` API 按 vantage 返回本地节点;海外 vantage 下国内节点可能解析失败属预期,中国/亚洲 VPS 正常)。
+  - 选择:`--speedtest`(默认 6 代表:港·沪联通·京联通·苏电信·浙电信·沪移动)/ `=cn`/`ct`/`cu`/`cm`/`hk`/`edu`/`intl`/`us`/`jp`/`sg`/`all` / server id 列表 / `=list` 看目录,逗号可组合。
+  - 终端/Markdown 表新增 运营商/延迟/上传 列;JSON `speedtest[]` 含 `carrier`/`latency_ms`/`up_mbps` 等字段。
+  - 单连接单流测速,结果仅供参考。
+- **配置变更**:旧 `[[speedtest]] {name,url}` 移除,改 `[speedtest] spec = "..."` + `[[speedtest.custom]] {name,carrier,host}`。
+
 ## [0.15.0] - 2026-06-13
 
 P15:多节点下载测速(可选)。ecs-parity 路线图 P10-P15 全部完成。
