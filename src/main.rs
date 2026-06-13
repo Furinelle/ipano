@@ -157,7 +157,7 @@ async fn main() {
                 let s = if args.markdown {
                     probe::route::render_section(&routes, lang)
                 } else {
-                    probe::route::render_terminal(&routes, lang)
+                    probe::route::render_terminal(&routes, lang, no_color)
                 };
                 println!("\n{}", s);
             }

@@ -4,6 +4,16 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.16.2] - 2026-06-13
+
+### 变更
+
+- **`--route` 回程线路等级三档化**(对齐 [oneclickvirt/backtrace](https://github.com/oneclickvirt/backtrace)):「质量」列从 优质/普通 两档改为 **精品 / 优质 / 普通** 三档,显示为带方括号的 `[精品线路]`/`[优质线路]`/`[普通线路]` 标签,终端三色着色(精品紫/优质绿/普通黄)。
+  - 等级映射:**精品** = 电信 CN2 GIA、移动 CMIN2;**优质** = 电信 CN2 GT/CN2、联通 9929/CUII、联通 CUG;**普通** = 电信 163、联通 169、移动 CMI/CMNET。
+  - 新增 `Grade` 枚举;`--json` 的 `route[]` 新增 `grade` 字段(boutique/premium/standard/unknown);`render_terminal` 接受 `no_color` 以支持 `--no-color`。
+
+[0.16.2]: https://github.com/Furinelle/ipano/releases/tag/v0.16.2
+
 ## [0.16.1] - 2026-06-13
 
 ### 修复

@@ -57,6 +57,7 @@ pub async fn run_routes(client: &Client, timeout_secs: u64) -> Vec<RouteResult> 
                     target: *ip,
                     hops,
                     line: super::LineType::Unknown,
+                    grade: super::Grade::Unknown,
                     entry: super::LineType::Unknown,
                     degraded: None,
                 });
@@ -72,6 +73,7 @@ pub async fn run_routes(client: &Client, timeout_secs: u64) -> Vec<RouteResult> 
                     target: *ip,
                     hops: Vec::new(),
                     line: super::LineType::Unknown,
+                    grade: super::Grade::Unknown,
                     entry: super::LineType::Unknown,
                     degraded: Some(reason.clone()),
                 });
@@ -107,6 +109,7 @@ pub async fn run_routes(client: &Client, timeout_secs: u64) -> Vec<RouteResult> 
         }
         // 回程线路 + 国际入境线,再对 CN2 做 GIA/GT 细分
         r.line = refine_cn2(classify_line(r.carrier, &asns), &ips_in_path);
+        r.grade = r.line.grade();
         r.entry = refine_cn2(classify_entry(&asns), &ips_in_path);
     }
 

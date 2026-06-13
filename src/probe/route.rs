@@ -115,19 +115,40 @@ impl LineType {
             LineType::Unknown => lang.pick("未识别", "Unknown"),
         }
     }
-    /// 质量档:优质 / 普通 / 未知(启发式)
-    pub fn quality(self, lang: Lang) -> &'static str {
+    /// 线路等级(精品/优质/普通/未知,启发式),对齐 oneclickvirt/backtrace
+    pub fn grade(self) -> Grade {
         match self {
-            LineType::Cn2gia
-            | LineType::Cn2gt
-            | LineType::Cn2
-            | LineType::Cuii9929
-            | LineType::Cug
-            | LineType::Cmin2 => lang.pick("优质", "Premium"),
-            LineType::Chinanet163 | LineType::China169 | LineType::Cmi | LineType::Cmnet => {
-                lang.pick("普通", "Standard")
-            }
-            LineType::Unknown => lang.pick("—", "—"),
+            LineType::Cn2gia | LineType::Cmin2 => Grade::Boutique,
+            LineType::Cn2gt | LineType::Cn2 | LineType::Cuii9929 | LineType::Cug => Grade::Premium,
+            LineType::Chinanet163 | LineType::China169 | LineType::Cmi | LineType::Cmnet => Grade::Standard,
+            LineType::Unknown => Grade::Unknown,
+        }
+    }
+}
+
+/// 回程线路等级(对齐 oneclickvirt/backtrace 三档:精品 > 优质 > 普通)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Grade { Boutique, Premium, Standard, Unknown }
+
+impl Grade {
+    /// 带方括号的展示标签,如「[精品线路]」
+    pub fn label(self, lang: Lang) -> &'static str {
+        match self {
+            Grade::Boutique => lang.pick("[精品线路]", "[Boutique]"),
+            Grade::Premium  => lang.pick("[优质线路]", "[Premium]"),
+            Grade::Standard => lang.pick("[普通线路]", "[Standard]"),
+            Grade::Unknown  => "—",
+        }
+    }
+    /// 终端着色:精品紫 / 优质绿 / 普通黄 / 未知灰
+    pub fn color(self) -> comfy_table::Color {
+        use comfy_table::Color;
+        match self {
+            Grade::Boutique => Color::Magenta,
+            Grade::Premium  => Color::Green,
+            Grade::Standard => Color::Yellow,
+            Grade::Unknown  => Color::DarkGrey,
         }
     }
 }
@@ -239,6 +260,8 @@ pub struct RouteResult {
     pub hops: Vec<Hop>,
     /// 该运营商自己的回程骨干(启发式)
     pub line: LineType,
+    /// 回程线路等级(精品/优质/普通,由 line 推导)
+    pub grade: Grade,
     /// 国际入境线:全路径里优先级最高的骨干(不限运营商),揭示「经哪家入境」
     pub entry: LineType,
     /// 降级原因(如「需 root 运行」);非空时 hops 为空
@@ -385,7 +408,7 @@ pub fn render_section(routes: &[RouteResult], lang: Lang) -> String {
         } else {
             writeln!(out, "| {} | {} {} | {} | {} | {} | {} |",
                 r.carrier.label(lang), r.target_name, r.target,
-                r.entry.label(lang), r.line.label(lang), r.line.quality(lang), r.hops.len()).ok();
+                r.entry.label(lang), r.line.label(lang), r.line.grade().label(lang), r.hops.len()).ok();
         }
     }
     if routes.iter().any(|r| r.degraded.is_some()) {
@@ -423,8 +446,8 @@ pub fn render_section(routes: &[RouteResult], lang: Lang) -> String {
 }
 
 /// 渲染三网回程路由区(comfy-table 包边表,终端用;与主报告风格一致)
-pub fn render_terminal(routes: &[RouteResult], lang: Lang) -> String {
-    use comfy_table::{presets::UTF8_FULL, Table};
+pub fn render_terminal(routes: &[RouteResult], lang: Lang, no_color: bool) -> String {
+    use comfy_table::{presets::UTF8_FULL, Cell, Table};
     let mut out = String::new();
     out.push_str(&format!("═══ {} ═══\n",
         lang.pick("三网回程路由(traceroute)", "China route (traceroute)")));
@@ -450,13 +473,17 @@ pub fn render_terminal(routes: &[RouteResult], lang: Lang) -> String {
             let txt = if reason == "need_privilege" {
                 lang.pick("需 root 运行", "needs root/cap_net_raw")
             } else { reason.as_str() };
-            t.add_row(vec![r.carrier.label(lang).to_string(), target,
-                "—".into(), txt.to_string(), "—".into(), "—".into()]);
+            t.add_row(vec![Cell::new(r.carrier.label(lang)), Cell::new(target),
+                Cell::new("—"), Cell::new(txt), Cell::new("—"), Cell::new("—")]);
         } else {
+            let grade_cell = {
+                let c = Cell::new(r.grade.label(lang));
+                if no_color { c } else { c.fg(r.grade.color()) }
+            };
             t.add_row(vec![
-                r.carrier.label(lang).to_string(), target,
-                r.entry.label(lang).to_string(), r.line.label(lang).to_string(),
-                r.line.quality(lang).to_string(), r.hops.len().to_string(),
+                Cell::new(r.carrier.label(lang)), Cell::new(target),
+                Cell::new(r.entry.label(lang)), Cell::new(r.line.label(lang)),
+                grade_cell, Cell::new(r.hops.len().to_string()),
             ]);
         }
     }
@@ -614,7 +641,7 @@ mod tests {
     fn mobile_cmin2_is_premium_and_beats_cmnet() {
         // AS58807 = 移动 CMIN2 精品(prio 9),路径同时有 CMNET(9808)时取 CMIN2
         assert_eq!(classify_line(Carrier::Mobile, &[9808, 58807]), LineType::Cmin2);
-        assert_eq!(LineType::Cmin2.quality(Lang::Zh), "优质");
+        assert_eq!(LineType::Cmin2.grade(), Grade::Boutique);
         // 58807 归属移动(历史误标联通,已纠正):给联通分类应识别不到
         assert_eq!(classify_line(Carrier::Unicom, &[58807]), LineType::Unknown);
     }
@@ -654,13 +681,18 @@ mod tests {
     }
 
     #[test]
-    fn line_quality_labels() {
-        assert_eq!(LineType::Cn2.quality(Lang::Zh), "优质");
-        assert_eq!(LineType::Cn2gia.quality(Lang::Zh), "优质");
-        assert_eq!(LineType::Chinanet163.quality(Lang::Zh), "普通");
-        // CMI(58453)为普通,精品移动是 CMIN2
-        assert_eq!(LineType::Cmi.quality(Lang::En), "Standard");
-        assert_eq!(LineType::Cmin2.quality(Lang::En), "Premium");
+    fn line_grade_labels() {
+        // 三档:精品(CN2 GIA / 移动 CMIN2)> 优质(CN2 / 联通 9929)> 普通(163/169/CMI/CMNET)
+        assert_eq!(LineType::Cn2gia.grade(), Grade::Boutique);
+        assert_eq!(LineType::Cmin2.grade(), Grade::Boutique);
+        assert_eq!(LineType::Cn2.grade(), Grade::Premium);
+        assert_eq!(LineType::Cuii9929.grade(), Grade::Premium);
+        assert_eq!(LineType::Chinanet163.grade(), Grade::Standard);
+        assert_eq!(LineType::Cmi.grade(), Grade::Standard);
+        assert_eq!(LineType::Unknown.grade(), Grade::Unknown);
+        // 括号标签
+        assert_eq!(Grade::Boutique.label(Lang::Zh), "[精品线路]");
+        assert_eq!(Grade::Premium.label(Lang::En), "[Premium]");
     }
 
     #[test]
@@ -683,6 +715,7 @@ mod tests {
             target: Ipv4Addr::new(219, 141, 136, 12),
             hops: vec![],
             line: LineType::Unknown,
+            grade: Grade::Unknown,
             entry: LineType::Unknown,
             degraded: Some("需 root 运行".into()),
         }];
@@ -707,6 +740,7 @@ mod tests {
                 Hop { ttl: 3, addr: Some(Ipv4Addr::new(219, 141, 136, 12)), rtt_ms: Some(33.2), asn: Some(4809), as_org: Some("Chinanet".into()), country: Some("CN".into()), city: Some("Beijing".into()) },
             ],
             line: LineType::Cn2,
+            grade: LineType::Cn2.grade(),
             entry: LineType::Cn2,
             degraded: None,
         }];
