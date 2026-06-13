@@ -12,6 +12,7 @@ pub mod ping0;
 pub mod ippure;
 pub mod abuseipdb;
 pub mod ipqs;
+pub mod ipregistry;
 
 use std::net::IpAddr;
 use async_trait::async_trait;
@@ -62,6 +63,7 @@ pub fn all_sources(ping0_token: Option<String>) -> Vec<Box<dyn Source>> {
         Box::new(ipapiis::IpApiIs::default()),
         Box::new(ipapicom::IpApiCom::default()),
         Box::new(ip2location::Ip2Location::default()),
+        Box::new(ipregistry::IpRegistry::default()),
     ]
 }
 
@@ -101,6 +103,12 @@ mod tests {
         assert!(ids.contains(&"ipinfo"));
         assert!(ids.contains(&"ipsb"));
         assert!(ids.contains(&"netcoffee"));
+    }
+
+    #[test]
+    fn all_sources_includes_ipreg() {
+        let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
+        assert!(ids.contains(&"ipreg"));
     }
 
     #[test]
