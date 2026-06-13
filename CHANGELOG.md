@@ -4,6 +4,20 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.17.0] - 2026-06-13
+
+### 新增
+
+- **IP 质量多源扩充 阶段一(免key源)**(对标 [oneclickvirt/securityCheck](https://github.com/oneclickvirt/securityCheck)):默认报告新接入 6 个免key源 —— [ipwhois.io](https://ipwhois.io) / [db-ip](https://db-ip.com) / [ipquery.io](https://ipquery.io) / **[ipapi.is](https://ipapi.is)(ASN/公司滥用分)** / [ipapi.co](https://ipapi.co) / [ip2location.io](https://www.ip2location.io)。新字段:使用类型、公司类型、ASN/公司滥用分、是否数据中心,`--json` 顶层一并暴露。
+  - 原计划的 bigdatacloud 实测任意-IP 端点需 key(返回 403),改用免key的 **ipquery.io** 替代,额外提供 VPN/代理/Tor/数据中心/风险分。
+- **`--raw` 逐源详表**:securityCheck 同款,每字段列出各源取值 + `[源缩写]` 标注,直观看源间分歧。
+- **DNSBL 扩到 211**:`--dnsbl` 黑名单从 12 条扩为 **211 条**(来源 fnando/email_data,剔除对反转 IP 无意义的 RHS/URI/DBL 黑名单),并发查询。
+- 多源布尔字段(是否数据中心等)合并改为**多数决**(平票取保守的 false,少数派由 `--raw` 另行展示)。
+
+> 阶段二(virustotal/ipdata/scamalytics/ipregistry/cloudflare 等 keyed 源)见后续 v0.18.0。
+
+[0.17.0]: https://github.com/Furinelle/ipano/releases/tag/v0.17.0
+
 ## [0.16.2] - 2026-06-13
 
 ### 变更
