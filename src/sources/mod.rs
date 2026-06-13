@@ -16,6 +16,7 @@ pub mod ipregistry;
 pub mod virustotal;
 pub mod getipintel;
 pub mod ipdata;
+pub mod cloudflare;
 
 use std::net::IpAddr;
 use async_trait::async_trait;
@@ -70,6 +71,7 @@ pub fn all_sources(ping0_token: Option<String>) -> Vec<Box<dyn Source>> {
         Box::new(virustotal::VirusTotal::default()),
         Box::new(getipintel::GetIpIntel::default()),
         Box::new(ipdata::IpData::default()),
+        Box::new(cloudflare::Cloudflare::default()),
     ]
 }
 
@@ -142,5 +144,11 @@ mod tests {
     fn all_sources_includes_ipdata() {
         let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
         assert!(ids.contains(&"ipdata"));
+    }
+
+    #[test]
+    fn all_sources_includes_cf() {
+        let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
+        assert!(ids.contains(&"cf"));
     }
 }
