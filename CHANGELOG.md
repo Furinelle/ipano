@@ -4,6 +4,14 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.16.1] - 2026-06-13
+
+### 修复
+
+- **`--speedtest <IP>` 误吞位置参数**(VPS 真机测出):`--speedtest` 是可选带值参数(`num_args=0..=1`),`ipano --speedtest 1.1.1.1` 会把目标 IP `1.1.1.1` 当成 SPEC 值,报「未知选择关键字」。加 `require_equals = true`:裸 `--speedtest` 走默认 6 代表,带值须用等号 `--speedtest=cn`,位置参数不再被吞。
+
+[0.16.1]: https://github.com/Furinelle/ipano/releases/tag/v0.16.1
+
 ## [0.16.0] - 2026-06-13
 
 `--speedtest` 重做为**三网回国 + 国际测速**(对标 superspeed.sh)。
