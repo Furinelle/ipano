@@ -137,6 +137,9 @@ async fn main() {
             } else {
                 print!("{}", render::terminal::render(&report, no_color, lang));
             }
+            if args.raw {
+                print!("\n{}", render::raw::render(&report));
+            }
             if !probes.is_empty() {
                 let s = if args.markdown {
                     probe::render_section(&probes, lang)

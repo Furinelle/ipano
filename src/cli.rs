@@ -17,6 +17,9 @@ pub struct Args {
     /// 输出 Markdown(含各源对比表 + 启发式结论)
     #[arg(long)]
     pub markdown: bool,
+    /// 逐源原始详表(securityCheck 同款,每字段标来源)
+    #[arg(long)]
+    pub raw: bool,
     /// 输出语言:zh(默认)或 en;未指定时回落到配置文件,再回落到 zh
     #[arg(long)]
     pub lang: Option<String>,
