@@ -25,11 +25,27 @@ pub struct Config {
     pub no_color: Option<bool>,
     pub ping0_token: Option<String>,
     pub always: Option<AlwaysFlags>,
-    /// 自定义测速节点(覆盖内置默认);例:
-    /// [[speedtest]]
-    /// name = "电信上海"
-    /// url  = "http://example.com/100mb.bin"
-    pub speedtest: Option<Vec<crate::probe::speedtest::SpeedNode>>,
+    /// 测速配置;例:
+    /// [speedtest]
+    /// spec = "cn"          # 默认选择(同 --speedtest SPEC 语法)
+    /// [[speedtest.custom]] # 追加目录外的 Ookla 节点
+    /// name = "自建"
+    /// carrier = "telecom"
+    /// host = "speedtest.example.com:8080"
+    pub speedtest: Option<SpeedtestCfg>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct SpeedtestCfg {
+    pub spec: Option<String>,
+    pub custom: Option<Vec<CustomNode>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CustomNode {
+    pub name: String,
+    pub carrier: String,   // telecom/unicom/mobile/edu/hk/us/jp/sg
+    pub host: String,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -99,6 +115,22 @@ mail = false
     fn config_parses_empty_toml() {
         let c: Config = toml::from_str("").unwrap();
         assert!(c.lang.is_none());
+    }
+
+    #[test]
+    fn config_parses_speedtest() {
+        let src = r#"
+[speedtest]
+spec = "cn"
+[[speedtest.custom]]
+name = "自建"
+carrier = "telecom"
+host = "speedtest.example.com:8080"
+"#;
+        let c: Config = toml::from_str(src).unwrap();
+        let st = c.speedtest.unwrap();
+        assert_eq!(st.spec.as_deref(), Some("cn"));
+        assert_eq!(st.custom.unwrap()[0].host, "speedtest.example.com:8080");
     }
 
     #[test]

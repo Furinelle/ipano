@@ -83,12 +83,34 @@ async fn main() {
     } else {
         Vec::new()
     };
-    // 多节点测速从本机出口发起,只跑一次(串行,耗时较长);配置文件可覆盖节点
-    let speedtest = if args.speedtest {
-        let nodes = cfg.speedtest.unwrap_or_else(probe::speedtest::default_nodes);
-        probe::speedtest::run_all(&nodes).await
-    } else {
-        Vec::new()
+    // 多节点测速:CLI --speedtest SPEC 优先,其次配置 [speedtest].spec;list 打印目录后退出
+    let speedtest = {
+        let cli_spec = args.speedtest.clone();
+        let cfg_st = cfg.speedtest;
+        let spec = cli_spec.or_else(|| cfg_st.as_ref().and_then(|s| s.spec.clone()));
+        match spec {
+            None => Vec::new(),
+            Some(spec) => {
+                let mut cat = probe::speedtest::catalog();
+                if let Some(customs) = cfg_st.and_then(|s| s.custom) {
+                    for cu in customs {
+                        cat.push(probe::speedtest::SpeedNode {
+                            id: 0, name: cu.name,
+                            carrier: probe::speedtest::Carrier::from_str_lenient(&cu.carrier),
+                            search: String::new(), host: Some(cu.host), default: false,
+                        });
+                    }
+                }
+                match probe::speedtest::parse_spec(&spec, &cat) {
+                    Ok(probe::speedtest::Selection::List) => {
+                        print!("{}", probe::speedtest::render_catalog(&cat, lang));
+                        return;
+                    }
+                    Ok(probe::speedtest::Selection::Nodes(nodes)) => probe::speedtest::run_all(&nodes).await,
+                    Err(e) => { eprintln!("--speedtest: {e}"); std::process::exit(2); }
+                }
+            }
+        }
     };
 
     for ip in targets {
