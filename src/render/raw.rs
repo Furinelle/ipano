@@ -30,6 +30,19 @@ pub fn render(report: &MergedReport) -> String {
     line!("VT无害", blacklist_harmless, |v: &u32| format!("{v}"));
     line!("VT恶意", blacklist_malicious, |v: &u32| format!("{v}"));
     line!("VT可疑", blacklist_suspicious, |v: &u32| format!("{v}"));
+    line!("VT未检出", blacklist_undetected, |v: &u32| format!("{v}"));
+    line!("信任分", trust_score, |v: &i64| format!("{v}"));
+    line!("欺诈分", fraud_score, |v: &i64| format!("{v}"));
+    line!("AbuseIPDB分", abuseipdb_score, |v: &i64| format!("{v}"));
+    line!("是否Tor", is_tor, |v: &bool| if *v {"Yes"} else {"No"}.to_string());
+    line!("是否托管", is_hosting, |v: &bool| if *v {"Yes"} else {"No"}.to_string());
+    line!("是否爬虫", is_crawler, |v: &bool| if *v {"Yes"} else {"No"}.to_string());
+    line!("是否移动", is_mobile, |v: &bool| if *v {"Yes"} else {"No"}.to_string());
+    line!("是否住宅", is_residential, |v: &bool| if *v {"Yes"} else {"No"}.to_string());
+    line!("是否滥用者", is_abuser, |v: &bool| if *v {"Yes"} else {"No"}.to_string());
+    line!("是否Bogon", is_bogon, |v: &bool| if *v {"Yes"} else {"No"}.to_string());
+    line!("浏览器分布", browser_dist, |v: &String| v.clone());
+    line!("系统分布", os_dist, |v: &String| v.clone());
     out
 }
 
@@ -70,5 +83,42 @@ mod tests {
         assert!(s.contains("No [ip2loc]"));
         assert!(s.contains("0.0131 [ipapiis]"));
         assert!(s.contains("DCH [ip2loc]"));
+    }
+
+    #[test]
+    fn raw_lists_added_quality_fields() {
+        let mut a = SourceData::new("ipapiis");
+        a.trust_score = Some(72);
+        a.fraud_score = Some(15);
+        a.abuseipdb_score = Some(3);
+        a.is_tor = Some(false);
+        a.is_hosting = Some(true);
+        a.is_crawler = Some(false);
+        a.is_mobile = Some(false);
+        a.is_residential = Some(false);
+        a.is_abuser = Some(true);
+        a.is_bogon = Some(false);
+        a.browser_dist = Some("Chrome 78% 其他 22%".into());
+        a.os_dist = Some("Windows 93% 其他 7%".into());
+        a.blacklist_undetected = Some(91);
+        let report = MergedReport { raw: vec![a], ..Default::default() };
+        let s = render(&report);
+        assert!(s.contains("信任分"));
+        assert!(s.contains("72 [ipapiis]"));
+        assert!(s.contains("欺诈分"));
+        assert!(s.contains("AbuseIPDB分"));
+        assert!(s.contains("是否Tor"));
+        assert!(s.contains("是否托管"));
+        assert!(s.contains("是否爬虫"));
+        assert!(s.contains("是否移动"));
+        assert!(s.contains("是否住宅"));
+        assert!(s.contains("是否滥用者"));
+        assert!(s.contains("Yes [ipapiis]"));
+        assert!(s.contains("是否Bogon"));
+        assert!(s.contains("浏览器分布"));
+        assert!(s.contains("Chrome 78% 其他 22% [ipapiis]"));
+        assert!(s.contains("系统分布"));
+        assert!(s.contains("VT未检出"));
+        assert!(s.contains("91 [ipapiis]"));
     }
 }
