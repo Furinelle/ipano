@@ -19,6 +19,7 @@ pub mod ipdata;
 pub mod cloudflare;
 pub mod bigdatacloud;
 pub mod scamalytics;
+pub mod dkly;
 
 use std::net::IpAddr;
 use async_trait::async_trait;
@@ -76,6 +77,7 @@ pub fn all_sources(ping0_token: Option<String>) -> Vec<Box<dyn Source>> {
         Box::new(cloudflare::Cloudflare::default()),
         Box::new(bigdatacloud::BigDataCloud::default()),
         Box::new(scamalytics::Scamalytics::default()),
+        Box::new(dkly::Dkly::default()),
     ]
 }
 
@@ -166,5 +168,13 @@ mod tests {
     fn all_sources_includes_scam() {
         let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
         assert!(ids.contains(&"scam"));
+    }
+
+    #[test]
+    fn all_sources_includes_phase2_keyed() {
+        let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
+        for id in ["ipreg", "vt", "ipintel", "ipdata", "cf", "bdc", "scam", "dkly"] {
+            assert!(ids.contains(&id), "缺少源 {id}");
+        }
     }
 }
