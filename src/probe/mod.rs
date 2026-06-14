@@ -108,6 +108,8 @@ pub fn all_probes() -> Vec<Box<dyn Probe>> {
         Box::new(TvbAnywhere::default()),
         Box::new(Funimation::default()),
         Box::new(ai::ChatGpt::default()),
+        Box::new(ai::Claude::default()),
+        Box::new(ai::Gemini::default()),
     ]
 }
 
