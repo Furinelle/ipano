@@ -20,6 +20,16 @@ pub fn render(report: &MergedReport) -> String {
     line!("是否代理", is_proxy, |v: &bool| if *v {"Yes"} else {"No"}.to_string());
     line!("是否VPN", is_vpn, |v: &bool| if *v {"Yes"} else {"No"}.to_string());
     line!("是否数据中心", is_datacenter, |v: &bool| if *v {"Yes"} else {"No"}.to_string());
+    line!("威胁等级", threat_level, |v: &String| v.clone());
+    line!("是否云", is_cloud, |v: &bool| if *v {"Yes"} else {"No"}.to_string());
+    line!("是否中继", is_relay, |v: &bool| if *v {"Yes"} else {"No"}.to_string());
+    line!("是否匿名", is_anonymous, |v: &bool| if *v {"Yes"} else {"No"}.to_string());
+    line!("人类流量", human_traffic_pct, |v: &f64| format!("{v}"));
+    line!("机器人流量", bot_traffic_pct, |v: &f64| format!("{v}"));
+    line!("设备分布", device_dist, |v: &String| v.clone());
+    line!("VT无害", blacklist_harmless, |v: &u32| format!("{v}"));
+    line!("VT恶意", blacklist_malicious, |v: &u32| format!("{v}"));
+    line!("VT可疑", blacklist_suspicious, |v: &u32| format!("{v}"));
     out
 }
 
@@ -27,6 +37,28 @@ pub fn render(report: &MergedReport) -> String {
 mod tests {
     use super::*;
     use crate::model::SourceData;
+    #[test]
+    fn raw_lists_phase2_fields() {
+        let mut vt = SourceData::new("vt");
+        vt.blacklist_malicious = Some(2);
+        let mut cf = SourceData::new("cf");
+        cf.human_traffic_pct = Some(78.5);
+        cf.bot_traffic_pct = Some(21.5);
+        let mut ipreg = SourceData::new("ipreg");
+        ipreg.is_cloud = Some(true);
+        ipreg.threat_level = Some("high".into());
+        let report = MergedReport { raw: vec![vt, cf, ipreg], ..Default::default() };
+        let s = render(&report);
+        assert!(s.contains("VT恶意"));
+        assert!(s.contains("2 [vt]"));
+        assert!(s.contains("人类流量"));
+        assert!(s.contains("78.5 [cf]"));
+        assert!(s.contains("是否云"));
+        assert!(s.contains("Yes [ipreg]"));
+        assert!(s.contains("威胁等级"));
+        assert!(s.contains("high [ipreg]"));
+    }
+
     #[test]
     fn raw_lists_per_source() {
         let mut a = SourceData::new("ipapiis"); a.is_proxy = Some(true); a.asn_abuse_score = Some(0.0131);

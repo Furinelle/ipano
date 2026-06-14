@@ -44,6 +44,20 @@ pub fn to_json(r: &MergedReport, probes: &[ProbeResult], mail: &[MailResult], ro
         "asn_abuse_score": r.asn_abuse_score,
         "company_abuse_score": r.company_abuse_score,
         "is_datacenter": r.is_datacenter,
+        "threat_level": r.threat_level,
+        "human_traffic_pct": r.human_traffic_pct,
+        "bot_traffic_pct": r.bot_traffic_pct,
+        "browser_dist": r.browser_dist,
+        "device_dist": r.device_dist,
+        "os_dist": r.os_dist,
+        "is_cloud": r.is_cloud,
+        "is_relay": r.is_relay,
+        "is_anonymous": r.is_anonymous,
+        "is_bogon": r.is_bogon,
+        "blacklist_harmless": r.blacklist_harmless,
+        "blacklist_malicious": r.blacklist_malicious,
+        "blacklist_suspicious": r.blacklist_suspicious,
+        "blacklist_undetected": r.blacklist_undetected,
         "sources": sources,
         "probes": probes,
         "mail": mail,
@@ -87,6 +101,22 @@ mod tests {
         assert!(s.contains("\"is_tor\""));
         assert!(s.contains("ai_verdict"));
         assert!(s.contains("Suspicious"));
+    }
+
+    #[test]
+    fn json_contains_phase2_fields() {
+        let ip = "1.1.1.1".parse().unwrap();
+        let mut d = SourceData::new("vt");
+        d.blacklist_malicious = Some(2);
+        d.blacklist_harmless = Some(80);
+        let mut cf = SourceData::new("cf");
+        cf.human_traffic_pct = Some(78.5);
+        let report = merge(ip, vec![("vt".into(), Ok(d)), ("cf".into(), Ok(cf))]);
+        let s = to_json(&report, &[], &[], &[], &[], &[]);
+        assert!(s.contains("blacklist_malicious"));
+        assert!(s.contains("human_traffic_pct"));
+        assert!(s.contains("threat_level"));
+        assert!(s.contains("is_cloud"));
     }
 
     #[test]

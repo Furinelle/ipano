@@ -12,6 +12,14 @@ pub mod ping0;
 pub mod ippure;
 pub mod abuseipdb;
 pub mod ipqs;
+pub mod ipregistry;
+pub mod virustotal;
+pub mod getipintel;
+pub mod ipdata;
+pub mod cloudflare;
+pub mod bigdatacloud;
+pub mod scamalytics;
+pub mod dkly;
 
 use std::net::IpAddr;
 use async_trait::async_trait;
@@ -62,6 +70,14 @@ pub fn all_sources(ping0_token: Option<String>) -> Vec<Box<dyn Source>> {
         Box::new(ipapiis::IpApiIs::default()),
         Box::new(ipapicom::IpApiCom::default()),
         Box::new(ip2location::Ip2Location::default()),
+        Box::new(ipregistry::IpRegistry::default()),
+        Box::new(virustotal::VirusTotal::default()),
+        Box::new(getipintel::GetIpIntel::default()),
+        Box::new(ipdata::IpData::default()),
+        Box::new(cloudflare::Cloudflare::default()),
+        Box::new(bigdatacloud::BigDataCloud::default()),
+        Box::new(scamalytics::Scamalytics::default()),
+        Box::new(dkly::Dkly::default()),
     ]
 }
 
@@ -104,10 +120,60 @@ mod tests {
     }
 
     #[test]
+    fn all_sources_includes_ipreg() {
+        let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
+        assert!(ids.contains(&"ipreg"));
+    }
+
+    #[test]
+    fn all_sources_includes_vt() {
+        let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
+        assert!(ids.contains(&"vt"));
+    }
+
+    #[test]
     fn all_sources_includes_phase1() {
         let s = all_sources(None);
         let ids: Vec<&str> = s.iter().map(|x| x.id()).collect();
         for id in ["ipwhois", "dbip", "ipquery", "ipapiis", "ipapicom", "ip2loc"] {
+            assert!(ids.contains(&id), "缺少源 {id}");
+        }
+    }
+
+    #[test]
+    fn all_sources_includes_ipintel() {
+        let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
+        assert!(ids.contains(&"ipintel"));
+    }
+
+    #[test]
+    fn all_sources_includes_ipdata() {
+        let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
+        assert!(ids.contains(&"ipdata"));
+    }
+
+    #[test]
+    fn all_sources_includes_cf() {
+        let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
+        assert!(ids.contains(&"cf"));
+    }
+
+    #[test]
+    fn all_sources_includes_bdc() {
+        let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
+        assert!(ids.contains(&"bdc"));
+    }
+
+    #[test]
+    fn all_sources_includes_scam() {
+        let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
+        assert!(ids.contains(&"scam"));
+    }
+
+    #[test]
+    fn all_sources_includes_phase2_keyed() {
+        let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
+        for id in ["ipreg", "vt", "ipintel", "ipdata", "cf", "bdc", "scam", "dkly"] {
             assert!(ids.contains(&id), "缺少源 {id}");
         }
     }

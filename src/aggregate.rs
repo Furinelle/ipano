@@ -47,6 +47,21 @@ pub struct MergedReport {
     pub asn_abuse_score: Option<f64>,
     pub company_abuse_score: Option<f64>,
     pub is_datacenter: Option<bool>,
+    // —— 阶段二 字段 ——
+    pub threat_level: Option<String>,
+    pub human_traffic_pct: Option<f64>,
+    pub bot_traffic_pct: Option<f64>,
+    pub browser_dist: Option<String>,
+    pub device_dist: Option<String>,
+    pub os_dist: Option<String>,
+    pub is_cloud: Option<bool>,
+    pub is_relay: Option<bool>,
+    pub is_anonymous: Option<bool>,
+    pub is_bogon: Option<bool>,
+    pub blacklist_harmless: Option<u32>,
+    pub blacklist_malicious: Option<u32>,
+    pub blacklist_suspicious: Option<u32>,
+    pub blacklist_undetected: Option<u32>,
     pub sources: Vec<SourceStatus>,
     /// 各成功源的原始数据(供横向对比表)
     pub raw: Vec<SourceData>,
@@ -86,15 +101,25 @@ pub fn merge(ip: IpAddr, results: Vec<(String, SourceResult)>) -> MergedReport {
     pick!(usage_type); pick!(company_type);
     pick!(asn_abuse_score); pick!(company_abuse_score);
     m.is_datacenter = majority_bool(&ok, |d| d.is_datacenter);
+    // 阶段二字段合并
+    pick!(threat_level);
+    pick!(human_traffic_pct); pick!(bot_traffic_pct);
+    pick!(browser_dist); pick!(device_dist); pick!(os_dist);
+    pick!(blacklist_harmless); pick!(blacklist_malicious);
+    pick!(blacklist_suspicious); pick!(blacklist_undetected);
+    m.is_cloud = majority_bool(&ok, |d| d.is_cloud);
+    m.is_relay = majority_bool(&ok, |d| d.is_relay);
+    m.is_anonymous = majority_bool(&ok, |d| d.is_anonymous);
+    m.is_bogon = majority_bool(&ok, |d| d.is_bogon);
     m.raw = ok;
     m
 }
 
-/// 多数决:多源布尔取多数;平票或无值返回 None。少数派由渲染层另行展示。
+/// 多数决:多源布尔取多数;无值返回 None,平票取保守的 false(与 spec 一致)。少数派由渲染层另行展示。
 fn majority_bool(ok: &[SourceData], f: impl Fn(&SourceData) -> Option<bool>) -> Option<bool> {
     let (mut t, mut fa) = (0u32, 0u32);
     for d in ok { match f(d) { Some(true) => t += 1, Some(false) => fa += 1, None => {} } }
-    if t == 0 && fa == 0 { None } else if t > fa { Some(true) } else if fa > t { Some(false) } else { Some(false) }
+    if t == 0 && fa == 0 { None } else if t > fa { Some(true) } else { Some(false) }
 }
 
 #[cfg(test)]
@@ -153,5 +178,36 @@ mod tests {
         assert_eq!(m.rep_threat, Some(29));
         assert_eq!(m.is_abuser, Some(true));
         assert_eq!(m.ai_verdict.as_ref().unwrap().confidence, 60);
+    }
+
+    #[test]
+    fn merge_carries_phase2_fields() {
+        let ip = "1.1.1.1".parse().unwrap();
+        let mut vt = SourceData::new("vt");
+        vt.blacklist_malicious = Some(2);
+        vt.blacklist_harmless = Some(80);
+        let mut ipreg = SourceData::new("ipreg");
+        ipreg.is_cloud = Some(true);
+        ipreg.is_relay = Some(false);
+        ipreg.threat_level = Some("high".into());
+        let m = merge(ip, vec![
+            ("vt".into(), Ok(vt)),
+            ("ipreg".into(), Ok(ipreg)),
+        ]);
+        assert_eq!(m.blacklist_malicious, Some(2));     // 单源 pick
+        assert_eq!(m.is_cloud, Some(true));             // 多数决(1:0)
+        assert_eq!(m.threat_level.as_deref(), Some("high"));
+    }
+
+    #[test]
+    fn merge_is_cloud_majority() {
+        let ip = "1.1.1.1".parse().unwrap();
+        let mk = |id: &str, c: bool| { let mut d = SourceData::new(id); d.is_cloud = Some(c); d };
+        let m = merge(ip, vec![
+            ("ipreg".into(), Ok(mk("ipreg", true))),
+            ("ipdata".into(), Ok(mk("ipdata", true))),
+            ("bdc".into(), Ok(mk("bdc", false))),
+        ]);
+        assert_eq!(m.is_cloud, Some(true)); // 2:1
     }
 }

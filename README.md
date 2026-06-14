@@ -9,6 +9,8 @@
 
 ## 当前状态
 
+**v0.18.0 — IP 质量多源扩充 阶段二(keyed 源)**。新接入 8 个需 API key 的高价值源(virustotal / cloudflare radar / ipregistry / ipdata.co / getipintel / bigdatacloud / scamalytics / dkly);无 key 自动跳过并标注,绝不伪造。新增字段:威胁等级、人机流量占比、设备/OS/浏览器分布、是否云/中继/匿名/bogon、VT 黑名单四项计数。ipfighter(无公开 API)与 fraudlogix(API 文档未公开)按「不可得即放弃」原则未接入。
+
 **v0.17.0 — IP 质量多源扩充 阶段一(免key源)**。默认报告新接入 6 个免key源(ipwhois.io / db-ip / ipquery.io / **ipapi.is(ASN/公司滥用分)** / ipapi.co / ip2location.io),新增 使用类型/公司类型/ASN·公司滥用分/是否数据中心 字段;多源布尔(数据中心等)合并改**多数决**;新增 `--raw` 逐源详表(每字段标 `[源缩写]`,直观看源间分歧);`--dnsbl` 黑名单从 12 扩到 **211** 条。对标 [oneclickvirt/securityCheck](https://github.com/oneclickvirt/securityCheck)。
 
 **v0.16.0 — 三网回国 + 国际测速重做**。`--speedtest` 不再下载国际 CDN，改为对 **speedtest.net 三网(电信/联通/移动)+ 香港 + 教育/广电 + 国际(美/日/新)** 服务器测 **延迟 + 下载 + 上传**(host 运行时按 server id 解析，适配各 vantage）。可选 `--speedtest=cn/ct/cu/cm/hk/edu/intl/us/jp/sg/all`、server id 列表或 `=list` 看全部可选节点，逗号可组合；不带值=默认 6 代表(港·沪联通·京联通·苏电信·浙电信·沪移动)。单连接单流，结果仅供参考。⚠️ 破坏性:旧 `[[speedtest]] {name,url}` 配置改为 `[speedtest] spec` + `[[speedtest.custom]]`。v0.14.x(P14)：`-A`/`--all` 同时启用 --probe/--mail/--route/--dnsbl；配置文件 `~/.config/ipano/config.toml` 持久化语言/超时/常开模块/ping0 token，CLI 参数优先覆盖。`--dnsbl` 对当前查询 IPv4 并发检查 12 个主流邮件/滥用黑名单(Spamhaus ZEN / SpamCop / Barracuda / CBL / SORBS / UCEProtect / DroneBL 等),DNS 反向查询 4s 超时,结果 comfy-table 呈现。v0.12.0(P11)：`--probe` 从 3 项扩为 **19 项**(Netflix · YouTube Premium · Disney+ · HBO Max · Hulu · Prime Video · Bilibili CN · Bilibili HK/TW · AbemaTV · DAZN · BBC iPlayer · Crunchyroll · Paramount+ · Peacock · Discovery+ · Spotify · TVB Anywhere+ · Funimation · ChatGPT),新增 **Region** 地区列与 **Native/DNS** 类型列(探针机地区 vs 内容地区自动对比),终端输出改为 comfy-table 包边表。
@@ -23,6 +25,21 @@
 - **风险/纯净度**:接入 ip.net.coffee `iprisk` 接口,呈现纯净度、滥用评分、信誉威胁值、AI 判定及代理/VPN/Tor/机房等标记
 - **欺诈分**:接入 [ippure](https://ippure.com) `fraudScore`(仅本机出口模式;查指定 IP 时该源自动跳过,因其 API 只返回调用者 IP)
 - **西方欺诈库(可选 key)**:配置环境变量后启用 [AbuseIPDB](https://www.abuseipdb.com)(`IPANO_ABUSEIPDB_KEY`,滥用置信度)与 [IPQS](https://www.ipqualityscore.com)(`IPANO_IPQS_KEY`,欺诈分 + proxy/vpn/tor);未配置则自动跳过并标注,绝不伪造
+- **IP 质量 keyed 源(可选 key,v0.18.0)**:以下源需配置环境变量;未配置则自动跳过并标注(与 AbuseIPDB/IPQS 降级机制一致,绝不伪造):
+
+  | 源 | 环境变量 | 说明 |
+  |---|---|---|
+  | [virustotal](https://www.virustotal.com) | `IPANO_VIRUSTOTAL_KEY` | 黑名单引擎统计(无害/恶意/可疑/未检出) |
+  | [cloudflare radar](https://radar.cloudflare.com) | `IPANO_CF_TOKEN` | 按 ASN 聚合的人机流量占比与设备分布(⚠ Radar 聚合数据,非该 IP 精确画像,仅供参考) |
+  | [ipregistry](https://ipregistry.co) | `IPANO_IPREGISTRY_KEY` | 云服务商/中继/匿名/公司类型判定 |
+  | [ipdata.co](https://ipdata.co) | `IPANO_IPDATA_KEY` | 数据中心/Tor/iCloud 中继/匿名/已知滥用威胁 |
+  | [getipintel](https://getipintel.net) | `IPANO_IPINTEL_EMAIL` | 代理/VPN 概率(填写联系邮箱,免费,作必填参数) |
+  | [bigdatacloud](https://www.bigdatacloud.com) | `IPANO_BDC_KEY` | hazardReport VPN/Tor/代理 + 危险分 |
+  | [scamalytics](https://scamalytics.com) | `IPANO_SCAMALYTICS_KEY` + `IPANO_SCAMALYTICS_USER` + `IPANO_SCAMALYTICS_BASE` | 欺诈分 + 风险等级 + 代理判定 |
+  | [dkly](https://ipinfo.dkly.net) | `IPANO_DKLY_KEY` | 地理 + VPN/代理/Tor/威胁 |
+
+  > **未接入源说明**:`ipfighter` 经核实无公开 API(仅网页查分工具);`fraudlogix` 虽有自助 API 但请求路径与响应字段结构未公开文档化——两者均按「不可得即放弃、不凑数」原则放弃。
+
 - **横向对比 + 启发式结论**:各源关键判定(代理/VPN/Tor/类型/风险分)并排对比,叠加启发式风险结论
 - **Markdown 导出 + 中英 i18n**:`--markdown` 输出可粘贴的报告,`--lang en` 切换英文
 - **三网回国 + 国际测速(`--speedtest`)**:对 speedtest.net 三网(电信/联通/移动)+ 香港 + 教育/广电 + 国际(美/日/新)服务器测 **延迟 + 下载 + 上传**;`--speedtest=list` 看全部可选节点,`=cn/ct/cu/cm/hk/edu/intl/us/jp/sg/all` 或 server id 列表选择(逗号可组合),不带值=默认 6 代表;host 运行时按 server id 解析;速率/延迟着色;配置文件 `[speedtest] spec` 设默认、`[[speedtest.custom]]` 加自定义节点;单连接单流仅供参考,因耗流量较大不含在 --all 内

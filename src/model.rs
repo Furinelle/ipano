@@ -59,6 +59,21 @@ pub struct SourceData {
     pub asn_abuse_score: Option<f64>,     // ipapi.is ASN 滥用分
     pub company_abuse_score: Option<f64>, // ipapi.is 公司滥用分
     pub is_datacenter: Option<bool>,
+    // —— 阶段二 keyed 源字段 ——
+    pub threat_level: Option<String>,        // low/medium/high(ipdata/scamalytics/fraudlogix)
+    pub human_traffic_pct: Option<f64>,      // cloudflare radar 人类流量占比
+    pub bot_traffic_pct: Option<f64>,        // cloudflare radar 机器人流量占比
+    pub browser_dist: Option<String>,        // cloudflare radar 浏览器分布摘要
+    pub device_dist: Option<String>,         // cloudflare radar 设备类型分布摘要
+    pub os_dist: Option<String>,             // cloudflare radar 操作系统分布摘要
+    pub is_cloud: Option<bool>,              // 云服务商(ipregistry/ipdata)
+    pub is_relay: Option<bool>,              // 中继(ipregistry,如 iCloud Relay)
+    pub is_anonymous: Option<bool>,          // 匿名网络(ipregistry/ipdata)
+    pub is_bogon: Option<bool>,              // bogon/保留地址(ipregistry/ipdata)
+    pub blacklist_harmless: Option<u32>,     // virustotal 无害引擎数
+    pub blacklist_malicious: Option<u32>,    // virustotal 恶意引擎数
+    pub blacklist_suspicious: Option<u32>,   // virustotal 可疑引擎数
+    pub blacklist_undetected: Option<u32>,   // virustotal 未检出引擎数
 }
 
 impl SourceData {
@@ -139,5 +154,28 @@ mod tests {
         let back: AiVerdict = serde_json::from_str(&s).unwrap();
         assert_eq!(back.label, "Clean");
         assert_eq!(back.confidence, 90);
+    }
+
+    #[test]
+    fn sourcedata_has_phase2_fields() {
+        let mut d = SourceData::new("vt");
+        d.threat_level = Some("high".into());
+        d.human_traffic_pct = Some(78.5);
+        d.bot_traffic_pct = Some(21.5);
+        d.browser_dist = Some("Chrome 64% 其他 36%".into());
+        d.device_dist = Some("desktop 70% mobile 30%".into());
+        d.os_dist = Some("Windows 55% Android 25%".into());
+        d.is_cloud = Some(true);
+        d.is_relay = Some(false);
+        d.is_anonymous = Some(false);
+        d.is_bogon = Some(false);
+        d.blacklist_harmless = Some(80);
+        d.blacklist_malicious = Some(2);
+        d.blacklist_suspicious = Some(1);
+        d.blacklist_undetected = Some(11);
+        assert_eq!(d.threat_level.as_deref(), Some("high"));
+        assert_eq!(d.human_traffic_pct, Some(78.5));
+        assert_eq!(d.is_cloud, Some(true));
+        assert_eq!(d.blacklist_malicious, Some(2));
     }
 }

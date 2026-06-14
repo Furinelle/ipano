@@ -40,6 +40,17 @@ pub fn render(r: &MergedReport, no_color: bool, lang: Lang) -> String {
         if let Some(v) = r.abuseipdb_score { rt.add_row(vec!["AbuseIPDB 置信度".to_string(), v.to_string()]); }
         if let Some(v) = r.rep_threat { rt.add_row(vec!["信誉威胁值".to_string(), v.to_string()]); }
         if let Some(s) = &r.abuser_score { rt.add_row(vec!["滥用评分".to_string(), s.clone()]); }
+        if let Some(t) = &r.threat_level { rt.add_row(vec!["威胁等级".to_string(), t.clone()]); }
+        if r.blacklist_malicious.is_some() || r.blacklist_harmless.is_some() {
+            rt.add_row(vec!["VT 黑名单".to_string(), format!(
+                "{} 恶意 / {} 可疑 / {} 无害",
+                r.blacklist_malicious.unwrap_or(0),
+                r.blacklist_suspicious.unwrap_or(0),
+                r.blacklist_harmless.unwrap_or(0))]);
+        }
+        if let (Some(h), Some(b)) = (r.human_traffic_pct, r.bot_traffic_pct) {
+            rt.add_row(vec!["人机流量(CF Radar)".to_string(), format!("人类 {h}% / 机器人 {b}%")]);
+        }
         rt.add_row(vec!["标记".to_string(), risk_flags(r)]);
         if let Some(v) = &r.ai_verdict {
             rt.add_row(vec!["AI 判定".to_string(),
@@ -71,6 +82,8 @@ fn has_risk(r: &MergedReport) -> bool {
         || r.abuseipdb_score.is_some() || r.ipqs_score.is_some()
         || r.is_proxy == Some(true) || r.is_vpn == Some(true) || r.is_tor == Some(true)
         || r.is_abuser == Some(true) || r.ip_type.is_some()
+        || r.blacklist_malicious.is_some() || r.human_traffic_pct.is_some()
+        || r.threat_level.is_some() || r.is_cloud == Some(true)
 }
 
 fn risk_flags(r: &MergedReport) -> String {
@@ -84,6 +97,8 @@ fn risk_flags(r: &MergedReport) -> String {
     if r.is_tor == Some(true) { f.push("Tor"); }
     if r.is_abuser == Some(true) { f.push("滥用史"); }
     if r.is_crawler == Some(true) { f.push("爬虫"); }
+    if r.is_cloud == Some(true) { f.push("云"); }
+    if r.is_anonymous == Some(true) { f.push("匿名"); }
     if f.is_empty() { "—".to_string() } else { f.join(" ") }
 }
 
@@ -108,6 +123,22 @@ mod tests {
         assert!(out.contains("13335"));
         assert!(out.contains("ipsb"));
         assert!(out.contains("ipapi"));
+    }
+
+    #[test]
+    fn render_shows_blacklist_and_traffic() {
+        let ip = "1.1.1.1".parse().unwrap();
+        let mut vt = SourceData::new("vt");
+        vt.blacklist_malicious = Some(2);
+        vt.blacklist_harmless = Some(80);
+        let mut cf = SourceData::new("cf");
+        cf.human_traffic_pct = Some(78.5);
+        cf.bot_traffic_pct = Some(21.5);
+        let report = merge(ip, vec![("vt".into(), Ok(vt)), ("cf".into(), Ok(cf))]);
+        let s = render(&report, true, crate::i18n::Lang::Zh);
+        assert!(s.contains("VT 黑名单"));
+        assert!(s.contains("2 恶意"));
+        assert!(s.contains("人机流量"));
     }
 
     #[test]

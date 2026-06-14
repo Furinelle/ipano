@@ -4,6 +4,32 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.18.0] - 2026-06-14
+
+### 新增
+
+- **IP 质量多源扩充 阶段二(keyed 源)**:接入 8 个需 API key 的高价值源,无 key 自动跳过并标注(沿用 AbuseIPDB/IPQS 降级,绝不伪造):
+  - **[virustotal](https://www.virustotal.com)(`vt`)**:黑名单引擎统计(无害/恶意/可疑/未检出),默认报告新增「VT 黑名单」行。
+  - **[cloudflare radar](https://radar.cloudflare.com)(`cf`)**:基于 IP→ASN 的人机流量占比与设备类型分布(Radar 聚合数据,非该 IP 精确画像,仅供参考)。
+  - **[ipregistry](https://ipregistry.co)(`ipreg`)**:云服务商/中继/匿名/公司类型判定。
+  - **[ipdata.co](https://ipdata.co)(`ipdata`)**:数据中心/Tor/iCloud 中继/匿名/已知滥用威胁。
+  - **[getipintel](https://getipintel.net)(`ipintel`)**:代理/VPN 概率(→风控值,需配置联系邮箱 `IPANO_IPINTEL_EMAIL`)。
+  - **[bigdatacloud](https://www.bigdatacloud.com)(`bdc`)**:hazardReport VPN/Tor/代理 + 危险分。
+  - **[scamalytics](https://scamalytics.com)(`scam`)**:欺诈分 + 风险等级 + 代理判定(需 host/user/key)。
+  - **[dkly](https://ipinfo.dkly.net)(`dkly`)**:地理 + VPN/代理/Tor/威胁。
+- 新增字段:威胁等级、人类/机器人流量占比、设备/OS/浏览器分布、是否云/中继/匿名/bogon、VT 黑名单四项计数,`--json` 顶层与 `--raw` 逐源详表一并暴露。
+
+### 放弃接入
+
+- **ipfighter**:经核实无公开 API(仅网页查分工具),按「不可得即放弃、不爬网页」原则放弃。
+- **fraudlogix**:虽有自助 API,但请求路径与响应字段结构均未公开文档化(仅注册后可得),无法验证,暂不接入(凑数有违诚实标注原则)。
+
+### 备注
+
+- ipdata / cloudflare / bigdatacloud / scamalytics / dkly 的响应字段名依公开文档实现,尚未经真实 key 的线上响应核实;配置 key 后建议各取一条真实响应比对字段名。
+
+[0.18.0]: https://github.com/Furinelle/ipano/releases/tag/v0.18.0
+
 ## [0.17.0] - 2026-06-13
 
 ### 新增

@@ -65,8 +65,8 @@ probe/dnsbl.rs      DNSBL 列表 12 → ~300
 | `vt` | virustotal | `IPANO_VIRUSTOTAL_KEY` | **黑名单记录统计**(无害/恶意/可疑/无记录) |
 | `cf` | cloudflare radar | `IPANO_CF_TOKEN` | **真人/机器人流量占比、浏览器/设备/OS 类型** |
 | `ipintel` | getipintel.net | `IPANO_IPINTEL_EMAIL`(email 为必填参数) | 代理/VPN 概率 |
-| `ipfighter` | ipfighter | `IPANO_IPFIGHTER_KEY`(端点实现期核实) | 欺诈补充 |
-| `fraudlogix` | fraudlogix | `IPANO_FRAUDLOGIX_KEY` | 欺诈/威胁 |
+| ~~`ipfighter`~~ | ~~ipfighter~~ | ~~`IPANO_IPFIGHTER_KEY`~~ | ~~欺诈补充~~ — **放弃(2026-06-14 核实)**:经核实无公开 API,仅为网页查分工具,按「不可得即放弃、不爬网页」原则放弃。 |
+| ~~`fraudlogix`~~ | ~~fraudlogix~~ | ~~`IPANO_FRAUDLOGIX_KEY`~~ | ~~欺诈/威胁~~ — **放弃(2026-06-14 核实)**:虽有自助 API,但请求路径与响应字段结构均未公开文档化(仅注册后可得),无法验证,按「不凑数」原则放弃。 |
 | `dkly` | dkly(端点实现期核实) | 视情况 | 代理/风险补充 |
 
 > 阶段二中 `ipfighter`/`fraudlogix`/`dkly` 端点与鉴权在实现计划阶段逐个 curl 核实;不可用或无公开 API 者降级为「不接入并在 spec 注明」,不强行爬网页(ToS 风险)。
@@ -151,5 +151,5 @@ probe/dnsbl.rs      DNSBL 列表 12 → ~300
 
 ## 分阶段交付
 
-- **阶段一(v0.17.0,本会话可实现+VPS验证)**:6 免key源 + 全部新字段 + merge 规则 + `--raw` 渲染骨架 + DNSBL ~300。
-- **阶段二(v0.18.0,需用户 key)**:keyed 源逐个接入,复用阶段一的字段与渲染。
+- **阶段一(v0.17.0,本会话可实现+VPS验证)**:6 免key源 + 全部新字段 + merge 规则 + `--raw` 渲染骨架 + DNSBL ~300。✅ 已交付(2026-06-13)。
+- **阶段二(v0.18.0,需用户 key)**:keyed 源逐个接入,复用阶段一的字段与渲染。✅ 已交付(2026-06-14),接入 **8 源**(vt / cf / ipreg / ipdata / ipintel / bdc / scam / dkly)。**ipfighter**(无公开 API)与 **fraudlogix**(API 文档未公开)经核实后按「不可得即放弃、不凑数」原则放弃,源清单共 17 源(非原计划 19 源)。
