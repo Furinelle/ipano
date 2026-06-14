@@ -47,6 +47,21 @@ pub struct MergedReport {
     pub asn_abuse_score: Option<f64>,
     pub company_abuse_score: Option<f64>,
     pub is_datacenter: Option<bool>,
+    // —— 阶段二 字段 ——
+    pub threat_level: Option<String>,
+    pub human_traffic_pct: Option<f64>,
+    pub bot_traffic_pct: Option<f64>,
+    pub browser_dist: Option<String>,
+    pub device_dist: Option<String>,
+    pub os_dist: Option<String>,
+    pub is_cloud: Option<bool>,
+    pub is_relay: Option<bool>,
+    pub is_anonymous: Option<bool>,
+    pub is_bogon: Option<bool>,
+    pub blacklist_harmless: Option<u32>,
+    pub blacklist_malicious: Option<u32>,
+    pub blacklist_suspicious: Option<u32>,
+    pub blacklist_undetected: Option<u32>,
     pub sources: Vec<SourceStatus>,
     /// 各成功源的原始数据(供横向对比表)
     pub raw: Vec<SourceData>,
@@ -86,6 +101,16 @@ pub fn merge(ip: IpAddr, results: Vec<(String, SourceResult)>) -> MergedReport {
     pick!(usage_type); pick!(company_type);
     pick!(asn_abuse_score); pick!(company_abuse_score);
     m.is_datacenter = majority_bool(&ok, |d| d.is_datacenter);
+    // 阶段二字段合并
+    pick!(threat_level);
+    pick!(human_traffic_pct); pick!(bot_traffic_pct);
+    pick!(browser_dist); pick!(device_dist); pick!(os_dist);
+    pick!(blacklist_harmless); pick!(blacklist_malicious);
+    pick!(blacklist_suspicious); pick!(blacklist_undetected);
+    m.is_cloud = majority_bool(&ok, |d| d.is_cloud);
+    m.is_relay = majority_bool(&ok, |d| d.is_relay);
+    m.is_anonymous = majority_bool(&ok, |d| d.is_anonymous);
+    m.is_bogon = majority_bool(&ok, |d| d.is_bogon);
     m.raw = ok;
     m
 }
