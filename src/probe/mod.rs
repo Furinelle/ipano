@@ -112,6 +112,12 @@ pub fn all_probes() -> Vec<Box<dyn Probe>> {
         Box::new(ai::Claude::default()),
         Box::new(ai::Gemini::default()),
         Box::new(web::Bing::default()),
+        Box::new(web::GoogleSearch::default()),
+        Box::new(web::Reddit::default()),
+        Box::new(web::Wikipedia::default()),
+        Box::new(web::OneTrust::default()),
+        Box::new(web::Apple::default()),
+        Box::new(web::Steam::default()),
     ]
 }
 
