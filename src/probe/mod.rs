@@ -118,6 +118,10 @@ pub fn all_probes() -> Vec<Box<dyn Probe>> {
         Box::new(web::OneTrust::default()),
         Box::new(web::Apple::default()),
         Box::new(web::Steam::default()),
+        Box::new(IQiYi::default()),
+        Box::new(Kocowa::default()),
+        Box::new(Viu::default()),
+        Box::new(TikTok::default()),
     ]
 }
 
