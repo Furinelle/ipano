@@ -214,6 +214,147 @@ impl Probe for Steam {
     }
 }
 
+// ===== MetaAI =====
+// GET meta.ai/ajax(带浏览器 UA)→ 400/404=可用;200=地区封锁;403=封锁。
+pub fn parse_meta_ai(status: u16) -> ProbeResult {
+    match status {
+        400 | 404 => ProbeResult::new("MetaAI", ProbeStatus::Unlocked, None),
+        200 => ProbeResult::new("MetaAI", ProbeStatus::Blocked, None).with_info("GeoBlocked"),
+        403 | 451 => ProbeResult::new("MetaAI", ProbeStatus::Blocked, None),
+        _ => ProbeResult::unknown("MetaAI"),
+    }
+}
+pub struct MetaAI { pub base: String }
+impl Default for MetaAI {
+    fn default() -> Self { MetaAI { base: "https://www.meta.ai".to_string() } }
+}
+#[async_trait]
+impl Probe for MetaAI {
+    fn name(&self) -> &'static str { "MetaAI" }
+    async fn check(&self, client: &Client) -> ProbeResult {
+        let url = format!("{}/ajax", self.base);
+        let req = client.get(&url)
+            .header(reqwest::header::USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36");
+        match req.send().await {
+            Ok(resp) => parse_meta_ai(resp.status().as_u16()),
+            Err(_) => ProbeResult::unknown("MetaAI"),
+        }
+    }
+}
+
+// ===== SonyLiv =====
+// GET sonyliv.com/signin → 403=封锁;200 解析 country_code:"XX"=可用;无码=Unknown。
+pub fn parse_sonyliv(status: u16, body: &str) -> ProbeResult {
+    if status == 403 { return ProbeResult::new("SonyLiv", ProbeStatus::Blocked, None); }
+    if status == 200 {
+        if let Some(cc) = between(body, "country_code:\"", "\"") {
+            return ProbeResult::new("SonyLiv", ProbeStatus::Unlocked, Some(cc.to_lowercase()));
+        }
+    }
+    ProbeResult::unknown("SonyLiv")
+}
+pub struct SonyLiv { pub base: String }
+impl Default for SonyLiv {
+    fn default() -> Self { SonyLiv { base: "https://www.sonyliv.com".to_string() } }
+}
+#[async_trait]
+impl Probe for SonyLiv {
+    fn name(&self) -> &'static str { "SonyLiv" }
+    async fn check(&self, client: &Client) -> ProbeResult {
+        let url = format!("{}/signin", self.base);
+        match client.get(&url).send().await {
+            Ok(resp) => {
+                let st = resp.status().as_u16();
+                let body = resp.text().await.unwrap_or_default();
+                parse_sonyliv(st, &body)
+            }
+            Err(_) => ProbeResult::unknown("SonyLiv"),
+        }
+    }
+}
+
+// ===== GooglePlay =====
+// GET play.google.com/store/games → 解析 region(两种模式);cn=封锁;有码=可用。
+fn extract_google_play_region(body: &str) -> Option<String> {
+    between(body, "\"zQmIje\":\"", "\"")
+        .or_else(|| between(body, "<div class=\"yVZQTb\">", "<"))
+        .map(|s| s.trim().to_string())
+}
+pub fn parse_google_play(status: u16, body: &str) -> ProbeResult {
+    if status != 200 { return ProbeResult::unknown("GooglePlay"); }
+    match extract_google_play_region(body) {
+        Some(r) if r.eq_ignore_ascii_case("cn") =>
+            ProbeResult::new("GooglePlay", ProbeStatus::Blocked, Some("cn".into())),
+        Some(r) if !r.is_empty() =>
+            ProbeResult::new("GooglePlay", ProbeStatus::Unlocked, Some(r.to_lowercase())),
+        _ => ProbeResult::new("GooglePlay", ProbeStatus::Blocked, None),
+    }
+}
+pub struct GooglePlay { pub base: String }
+impl Default for GooglePlay {
+    fn default() -> Self { GooglePlay { base: "https://play.google.com".to_string() } }
+}
+#[async_trait]
+impl Probe for GooglePlay {
+    fn name(&self) -> &'static str { "GooglePlay" }
+    async fn check(&self, client: &Client) -> ProbeResult {
+        let url = format!("{}/store/games", self.base);
+        match client.get(&url).send().await {
+            Ok(resp) => {
+                let st = resp.status().as_u16();
+                let body = resp.text().await.unwrap_or_default();
+                parse_google_play(st, &body)
+            }
+            Err(_) => ProbeResult::unknown("GooglePlay"),
+        }
+    }
+}
+
+// ===== InstagramMusic(授权音频)=====
+// POST instagram.com/api/graphql(固定 payload,含会过期的 doc_id)。
+// 200+含媒体数据=可用;200+错误/login=封锁;429=限流;其余=Unknown。
+const IG_PAYLOAD: &str = "av=0&__d=www&__user=0&__a=1&__req=3&doc_id=10015901848480474&variables=%7B%22shortcode%22%3A%22C2YEAdOh9AB%22%7D&fb_api_req_friendly_name=PolarisPostActionLoadPostQueryQuery&server_timestamps=true";
+
+pub fn parse_instagram(status: u16, body: &str) -> ProbeResult {
+    if status == 429 {
+        return ProbeResult::new("InstagramMusic", ProbeStatus::Unknown, None).with_info("Too Many Requests");
+    }
+    if status == 200 {
+        if body.contains("login_required") || body.contains("\"errors\"") || body.contains("usepc") {
+            return ProbeResult::new("InstagramMusic", ProbeStatus::Blocked, None);
+        }
+        if body.contains("xdt_api") || body.contains("\"data\"") {
+            return ProbeResult::new("InstagramMusic", ProbeStatus::Unlocked, None);
+        }
+    }
+    ProbeResult::unknown("InstagramMusic")
+}
+pub struct InstagramMusic { pub base: String }
+impl Default for InstagramMusic {
+    fn default() -> Self { InstagramMusic { base: "https://www.instagram.com".to_string() } }
+}
+#[async_trait]
+impl Probe for InstagramMusic {
+    fn name(&self) -> &'static str { "InstagramMusic" }
+    async fn check(&self, client: &Client) -> ProbeResult {
+        let url = format!("{}/api/graphql", self.base);
+        let req = client.post(&url)
+            .header(reqwest::header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+            .header(reqwest::header::ORIGIN, "https://www.instagram.com")
+            .header(reqwest::header::REFERER, "https://www.instagram.com/p/C2YEAdOh9AB/")
+            .header("X-FB-Friendly-Name", "PolarisPostActionLoadPostQueryQuery")
+            .body(IG_PAYLOAD);
+        match req.send().await {
+            Ok(resp) => {
+                let st = resp.status().as_u16();
+                let body = resp.text().await.unwrap_or_default();
+                parse_instagram(st, &body)
+            }
+            Err(_) => ProbeResult::unknown("InstagramMusic"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -280,5 +421,43 @@ mod tests {
         assert_eq!(r.region.as_deref(), Some("us"));
         assert_eq!(r.info.as_deref(), Some("Community Available"));
         assert_eq!(parse_steam("nothing=here").status, ProbeStatus::Blocked);
+    }
+
+    #[test]
+    fn meta_ai_branches() {
+        assert_eq!(parse_meta_ai(404).status, ProbeStatus::Unlocked);
+        assert_eq!(parse_meta_ai(400).status, ProbeStatus::Unlocked);
+        assert_eq!(parse_meta_ai(200).status, ProbeStatus::Blocked);
+        assert_eq!(parse_meta_ai(200).info.as_deref(), Some("GeoBlocked"));
+        assert_eq!(parse_meta_ai(403).status, ProbeStatus::Blocked);
+        assert_eq!(parse_meta_ai(500).status, ProbeStatus::Unknown);
+    }
+
+    #[test]
+    fn sonyliv_branches() {
+        let r = parse_sonyliv(200, r#"...country_code:"IN"..."#);
+        assert_eq!(r.status, ProbeStatus::Unlocked);
+        assert_eq!(r.region.as_deref(), Some("in"));
+        assert_eq!(parse_sonyliv(403, "").status, ProbeStatus::Blocked);
+        assert_eq!(parse_sonyliv(200, "no code here").status, ProbeStatus::Unknown);
+    }
+
+    #[test]
+    fn google_play_branches() {
+        let r = parse_google_play(200, r#"x "zQmIje":"US" y"#);
+        assert_eq!(r.status, ProbeStatus::Unlocked);
+        assert_eq!(r.region.as_deref(), Some("us"));
+        assert_eq!(parse_google_play(200, r#""zQmIje":"CN""#).status, ProbeStatus::Blocked);
+        assert_eq!(parse_google_play(200, "nothing").status, ProbeStatus::Blocked);
+        assert_eq!(parse_google_play(500, "").status, ProbeStatus::Unknown);
+    }
+
+    #[test]
+    fn instagram_branches() {
+        assert_eq!(parse_instagram(200, r#"{"data":{"xdt_api__v1__media__shortcode__web_info":{}}}"#).status, ProbeStatus::Unlocked);
+        assert_eq!(parse_instagram(200, r#"{"errors":["login_required"]}"#).status, ProbeStatus::Blocked);
+        assert_eq!(parse_instagram(429, "").status, ProbeStatus::Unknown);
+        assert_eq!(parse_instagram(429, "").info.as_deref(), Some("Too Many Requests"));
+        assert_eq!(parse_instagram(500, "").status, ProbeStatus::Unknown);
     }
 }

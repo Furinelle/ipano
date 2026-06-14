@@ -125,6 +125,10 @@ pub fn all_probes() -> Vec<Box<dyn Probe>> {
         Box::new(TikTok::default()),
         Box::new(cdn::NetflixCdn::default()),
         Box::new(cdn::YoutubeCdn::default()),
+        Box::new(web::MetaAI::default()),
+        Box::new(web::SonyLiv::default()),
+        Box::new(web::GooglePlay::default()),
+        Box::new(web::InstagramMusic::default()),
     ]
 }
 
