@@ -38,6 +38,10 @@
   | [scamalytics](https://scamalytics.com) | `IPANO_SCAMALYTICS_KEY` + `IPANO_SCAMALYTICS_USER` + `IPANO_SCAMALYTICS_BASE` | 欺诈分 + 风险等级 + 代理判定 |
   | [dkly](https://ipinfo.dkly.net) | `IPANO_DKLY_KEY` | 地理 + VPN/代理/Tor/威胁 |
 
+  > **scamalytics 配置**:三个变量缺一不可,均取自激活邮件。`IPANO_SCAMALYTICS_BASE` 须填示例 URL 中的 API 主机**并含 `/v3` 路径段**(各账号主机不同,如 `https://api11.scamalytics.com/v3`);只填到主机名会 404。
+  >
+  > **getipintel 注意**:该服务封禁从数据中心/VPN/代理出口 IP 发起的查询(返回 `-5` 错误码),命中时本源自动标失败跳过,不影响其余源;建议从住宅网络使用。
+  >
   > **未接入源说明**:`ipfighter` 经核实无公开 API(仅网页查分工具);`fraudlogix` 虽有自助 API 但请求路径与响应字段结构未公开文档化——两者均按「不可得即放弃、不凑数」原则放弃。
 
 - **横向对比 + 启发式结论**:各源关键判定(代理/VPN/Tor/类型/风险分)并排对比,叠加启发式风险结论
