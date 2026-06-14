@@ -4,6 +4,15 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布] v0.19.0 进行中
+
+### 阶段 A — IP 质量全字段渲染补全
+
+- `--raw` 逐源详表补 13 字段:信任/欺诈/AbuseIPDB 分、是否 Tor/托管/爬虫/移动/住宅/滥用者/Bogon、浏览器/系统分布、VT 未检出数。
+- 默认报告风险面板补:浏览器/系统/设备分布行、VT 黑名单未检出计数、Bogon 标记。
+- JSON 新增 `sources_data` 数组,逐源输出完整 `SourceData` 原始字段。
+- model 与 merge 无改动(字段早已合并,本阶段纯渲染补齐)。
+
 ## [0.18.0] - 2026-06-14
 
 ### 新增

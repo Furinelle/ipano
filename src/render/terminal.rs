@@ -43,14 +43,18 @@ pub fn render(r: &MergedReport, no_color: bool, lang: Lang) -> String {
         if let Some(t) = &r.threat_level { rt.add_row(vec!["威胁等级".to_string(), t.clone()]); }
         if r.blacklist_malicious.is_some() || r.blacklist_harmless.is_some() {
             rt.add_row(vec!["VT 黑名单".to_string(), format!(
-                "{} 恶意 / {} 可疑 / {} 无害",
+                "{} 恶意 / {} 可疑 / {} 无害 / {} 未检出",
                 r.blacklist_malicious.unwrap_or(0),
                 r.blacklist_suspicious.unwrap_or(0),
-                r.blacklist_harmless.unwrap_or(0))]);
+                r.blacklist_harmless.unwrap_or(0),
+                r.blacklist_undetected.unwrap_or(0))]);
         }
         if let (Some(h), Some(b)) = (r.human_traffic_pct, r.bot_traffic_pct) {
             rt.add_row(vec!["人机流量(CF Radar)".to_string(), format!("人类 {h}% / 机器人 {b}%")]);
         }
+        if let Some(s) = &r.browser_dist { rt.add_row(vec!["浏览器分布(CF Radar)".to_string(), s.clone()]); }
+        if let Some(s) = &r.os_dist { rt.add_row(vec!["系统分布(CF Radar)".to_string(), s.clone()]); }
+        if let Some(s) = &r.device_dist { rt.add_row(vec!["设备分布(CF Radar)".to_string(), s.clone()]); }
         rt.add_row(vec!["标记".to_string(), risk_flags(r)]);
         if let Some(v) = &r.ai_verdict {
             rt.add_row(vec!["AI 判定".to_string(),
@@ -99,6 +103,7 @@ fn risk_flags(r: &MergedReport) -> String {
     if r.is_crawler == Some(true) { f.push("爬虫"); }
     if r.is_cloud == Some(true) { f.push("云"); }
     if r.is_anonymous == Some(true) { f.push("匿名"); }
+    if r.is_bogon == Some(true) { f.push("Bogon"); }
     if f.is_empty() { "—".to_string() } else { f.join(" ") }
 }
 
@@ -156,5 +161,28 @@ mod tests {
         assert!(out.contains("纯净度") || out.contains("可信"));
         assert!(out.contains("41"));
         assert!(out.contains("Suspicious"));
+    }
+
+    #[test]
+    fn render_shows_dist_and_undetected_and_bogon() {
+        let ip = "1.1.1.1".parse().unwrap();
+        let mut cf = SourceData::new("cf");
+        cf.browser_dist = Some("Chrome 78% 其他 22%".into());
+        cf.os_dist = Some("Windows 93% 其他 7%".into());
+        cf.device_dist = Some("桌面 73% 移动 26%".into());
+        let mut vt = SourceData::new("vt");
+        vt.blacklist_malicious = Some(0);
+        vt.blacklist_undetected = Some(91);
+        let mut ipreg = SourceData::new("ipreg");
+        ipreg.is_bogon = Some(true);
+        let report = merge(ip, vec![
+            ("cf".into(), Ok(cf)), ("vt".into(), Ok(vt)), ("ipreg".into(), Ok(ipreg)),
+        ]);
+        let s = render(&report, true, crate::i18n::Lang::Zh);
+        assert!(s.contains("浏览器分布"));
+        assert!(s.contains("系统分布"));
+        assert!(s.contains("设备分布"));
+        assert!(s.contains("未检出"));
+        assert!(s.contains("Bogon"));
     }
 }
