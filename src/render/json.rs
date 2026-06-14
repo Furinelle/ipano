@@ -59,6 +59,7 @@ pub fn to_json(r: &MergedReport, probes: &[ProbeResult], mail: &[MailResult], ro
         "blacklist_suspicious": r.blacklist_suspicious,
         "blacklist_undetected": r.blacklist_undetected,
         "sources": sources,
+        "sources_data": r.raw,
         "probes": probes,
         "mail": mail,
         "route": routes,
@@ -134,5 +135,20 @@ mod tests {
         assert!(s.contains("asn_abuse_score"));
         assert!(s.contains("company_abuse_score"));
         assert!(s.contains("is_datacenter"));
+    }
+
+    #[test]
+    fn json_contains_per_source_raw() {
+        let ip = "1.1.1.1".parse().unwrap();
+        let mut a = SourceData::new("ipapiis");
+        a.usage_type = Some("hosting".into());
+        a.is_tor = Some(false);
+        a.browser_dist = Some("Chrome 78%".into());
+        let report = merge(ip, vec![("ipapiis".to_string(), Ok(a))]);
+        let s = to_json(&report, &[], &[], &[], &[], &[]);
+        assert!(s.contains("sources_data"));
+        assert!(s.contains("\"source_id\""));
+        assert!(s.contains("\"ipapiis\""));
+        assert!(s.contains("\"browser_dist\""));
     }
 }
