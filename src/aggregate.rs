@@ -179,4 +179,35 @@ mod tests {
         assert_eq!(m.is_abuser, Some(true));
         assert_eq!(m.ai_verdict.as_ref().unwrap().confidence, 60);
     }
+
+    #[test]
+    fn merge_carries_phase2_fields() {
+        let ip = "1.1.1.1".parse().unwrap();
+        let mut vt = SourceData::new("vt");
+        vt.blacklist_malicious = Some(2);
+        vt.blacklist_harmless = Some(80);
+        let mut ipreg = SourceData::new("ipreg");
+        ipreg.is_cloud = Some(true);
+        ipreg.is_relay = Some(false);
+        ipreg.threat_level = Some("high".into());
+        let m = merge(ip, vec![
+            ("vt".into(), Ok(vt)),
+            ("ipreg".into(), Ok(ipreg)),
+        ]);
+        assert_eq!(m.blacklist_malicious, Some(2));     // 单源 pick
+        assert_eq!(m.is_cloud, Some(true));             // 多数决(1:0)
+        assert_eq!(m.threat_level.as_deref(), Some("high"));
+    }
+
+    #[test]
+    fn merge_is_cloud_majority() {
+        let ip = "1.1.1.1".parse().unwrap();
+        let mk = |id: &str, c: bool| { let mut d = SourceData::new(id); d.is_cloud = Some(c); d };
+        let m = merge(ip, vec![
+            ("ipreg".into(), Ok(mk("ipreg", true))),
+            ("ipdata".into(), Ok(mk("ipdata", true))),
+            ("bdc".into(), Ok(mk("bdc", false))),
+        ]);
+        assert_eq!(m.is_cloud, Some(true)); // 2:1
+    }
 }
