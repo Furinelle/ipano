@@ -12,7 +12,7 @@
   - **[virustotal](https://www.virustotal.com)(`vt`)**:黑名单引擎统计(无害/恶意/可疑/未检出),默认报告新增「VT 黑名单」行。
   - **[cloudflare radar](https://radar.cloudflare.com)(`cf`)**:基于 IP→ASN 的人机流量占比与设备类型分布(Radar 聚合数据,非该 IP 精确画像,仅供参考)。
   - **[ipregistry](https://ipregistry.co)(`ipreg`)**:云服务商/中继/匿名/公司类型判定。
-  - **[ipdata.co](https://ipdata.co)(`ipdata`)**:数据中心/Tor/iCloud中继/匿名/已知滥用威胁。
+  - **[ipdata.co](https://ipdata.co)(`ipdata`)**:数据中心/Tor/iCloud 中继/匿名/已知滥用威胁。
   - **[getipintel](https://getipintel.net)(`ipintel`)**:代理/VPN 概率(→风控值,需配置联系邮箱 `IPANO_IPINTEL_EMAIL`)。
   - **[bigdatacloud](https://www.bigdatacloud.com)(`bdc`)**:hazardReport VPN/Tor/代理 + 危险分。
   - **[scamalytics](https://scamalytics.com)(`scam`)**:欺诈分 + 风险等级 + 代理判定(需 host/user/key)。

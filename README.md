@@ -32,13 +32,14 @@
   | [virustotal](https://www.virustotal.com) | `IPANO_VIRUSTOTAL_KEY` | 黑名单引擎统计(无害/恶意/可疑/未检出) |
   | [cloudflare radar](https://radar.cloudflare.com) | `IPANO_CF_TOKEN` | 按 ASN 聚合的人机流量占比与设备分布(⚠ Radar 聚合数据,非该 IP 精确画像,仅供参考) |
   | [ipregistry](https://ipregistry.co) | `IPANO_IPREGISTRY_KEY` | 云服务商/中继/匿名/公司类型判定 |
-  | [ipdata.co](https://ipdata.co) | `IPANO_IPDATA_KEY` | 数据中心/Tor/iCloud中继/匿名/已知滥用威胁 |
+  | [ipdata.co](https://ipdata.co) | `IPANO_IPDATA_KEY` | 数据中心/Tor/iCloud 中继/匿名/已知滥用威胁 |
   | [getipintel](https://getipintel.net) | `IPANO_IPINTEL_EMAIL` | 代理/VPN 概率(填写联系邮箱,免费,作必填参数) |
   | [bigdatacloud](https://www.bigdatacloud.com) | `IPANO_BDC_KEY` | hazardReport VPN/Tor/代理 + 危险分 |
   | [scamalytics](https://scamalytics.com) | `IPANO_SCAMALYTICS_KEY` + `IPANO_SCAMALYTICS_USER` + `IPANO_SCAMALYTICS_BASE` | 欺诈分 + 风险等级 + 代理判定 |
   | [dkly](https://ipinfo.dkly.net) | `IPANO_DKLY_KEY` | 地理 + VPN/代理/Tor/威胁 |
 
   > **未接入源说明**:`ipfighter` 经核实无公开 API(仅网页查分工具);`fraudlogix` 虽有自助 API 但请求路径与响应字段结构未公开文档化——两者均按「不可得即放弃、不凑数」原则放弃。
+
 - **横向对比 + 启发式结论**:各源关键判定(代理/VPN/Tor/类型/风险分)并排对比,叠加启发式风险结论
 - **Markdown 导出 + 中英 i18n**:`--markdown` 输出可粘贴的报告,`--lang en` 切换英文
 - **三网回国 + 国际测速(`--speedtest`)**:对 speedtest.net 三网(电信/联通/移动)+ 香港 + 教育/广电 + 国际(美/日/新)服务器测 **延迟 + 下载 + 上传**;`--speedtest=list` 看全部可选节点,`=cn/ct/cu/cm/hk/edu/intl/us/jp/sg/all` 或 server id 列表选择(逗号可组合),不带值=默认 6 代表;host 运行时按 server id 解析;速率/延迟着色;配置文件 `[speedtest] spec` 设默认、`[[speedtest.custom]]` 加自定义节点;单连接单流仅供参考,因耗流量较大不含在 --all 内
