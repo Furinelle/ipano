@@ -20,7 +20,7 @@ struct Asn { asn: Option<u32>, abuser_score: Option<String>, org: Option<String>
 struct Company { #[serde(rename = "type")] ctype: Option<String>, abuser_score: Option<String> }
 
 /// "0.0131 (Elevated)" → 0.0131
-fn lead_f64(s: &str) -> Option<f64> { s.trim().split_whitespace().next()?.parse().ok() }
+fn lead_f64(s: &str) -> Option<f64> { s.split_whitespace().next()?.parse().ok() }
 
 pub struct IpApiIs { pub base: String }
 impl Default for IpApiIs { fn default() -> Self { IpApiIs { base: "https://api.ipapi.is".into() } } }

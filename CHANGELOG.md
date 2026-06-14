@@ -4,6 +4,19 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.20.0] - 2026-06-14
+
+### 新增
+
+- **交互式数字菜单**:裸跑 `ipano` 且 stdin 是 TTY 时进入菜单,可输入编号选择运行 IP 全景报告、逐源详表、解锁检测、邮局连通、三网回程、DNSBL、多节点测速;支持逗号多选与 `A` 全跑(不含测速)。
+- **菜单内修改目标 IP**:`I` 可设置任意目标 IP,留空恢复本机出口;每轮执行后回到菜单继续选择,`Q` 或 Ctrl-D 退出。
+- **`--report` 逆向开关**:需要恢复旧裸跑直出报告行为时使用 `ipano --report`。
+
+### 兼容性
+
+- `ipano <IP>`、所有功能 flag(`--json`/`--markdown`/`--raw`/`--probe`/`--mail`/`--route`/`--dnsbl`/`--speedtest`/`--all`)以及非 TTY 管道/cron 场景继续直跑,不进入菜单。
+- `--lang`、`--no-color`、`--timeout`、`--ping0-token`、`-4`、`-6` 作为修饰 flag 可随菜单使用。
+
 ## [0.19.0] - 2026-06-14
 
 ### 阶段 C — 复杂探针 + CDN 定位(探针 32→38)
