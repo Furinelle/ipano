@@ -18,6 +18,7 @@ pub mod getipintel;
 pub mod ipdata;
 pub mod cloudflare;
 pub mod bigdatacloud;
+pub mod scamalytics;
 
 use std::net::IpAddr;
 use async_trait::async_trait;
@@ -74,6 +75,7 @@ pub fn all_sources(ping0_token: Option<String>) -> Vec<Box<dyn Source>> {
         Box::new(ipdata::IpData::default()),
         Box::new(cloudflare::Cloudflare::default()),
         Box::new(bigdatacloud::BigDataCloud::default()),
+        Box::new(scamalytics::Scamalytics::default()),
     ]
 }
 
@@ -158,5 +160,11 @@ mod tests {
     fn all_sources_includes_bdc() {
         let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
         assert!(ids.contains(&"bdc"));
+    }
+
+    #[test]
+    fn all_sources_includes_scam() {
+        let ids: Vec<&str> = all_sources(None).iter().map(|x| x.id()).collect();
+        assert!(ids.contains(&"scam"));
     }
 }
