@@ -13,6 +13,15 @@
 - JSON 新增 `sources_data` 数组,逐源输出完整 `SourceData` 原始字段。
 - model 与 merge 无改动(字段早已合并,本阶段纯渲染补齐)。
 
+### 阶段 B — 解锁探针扩充(13 简单探针,对标 oneclickvirt/UnlockTests)
+
+- AI:Claude、Gemini(含地区解析)。
+- 搜索/工具/商店:Bing(含地区/CN)、GoogleSearch、Reddit、Wikipedia(可编辑性)、OneTrust(国家+州)、Apple(区域)、Steam(社区可达 + 区域)。
+- 亚洲流媒体 + 短视频:iQIYI、KOCOWA、Viu、TikTok(含地区)。
+- `ProbeResult` 增 `info` 备注字段,解锁表加「备注」列(如 Community Available / Rate Limited)。
+- 新增 `probe/web.rs`、`probe/unlock_util.rs`(region 三→二码 / cookie / 子串提取纯函数)。
+- `--probe` 探针总数 19 → 32。
+
 ## [0.18.0] - 2026-06-14
 
 ### 新增

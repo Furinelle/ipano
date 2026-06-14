@@ -684,6 +684,121 @@ impl Probe for Funimation {
 }
 
 // ─────────────────────────────────────────────
+// iQIYI / KOCOWA / Viu / TikTok(UnlockTests 对标,阶段 B)
+// ─────────────────────────────────────────────
+
+// ===== iQIYI =====
+// GET iq.com → 200=可用;403/451=封锁。
+pub fn classify_iqiyi(status: u16) -> ProbeResult {
+    match status {
+        200 => ProbeResult::new("iQIYI", ProbeStatus::Unlocked, None),
+        403 | 451 => ProbeResult::new("iQIYI", ProbeStatus::Blocked, None),
+        _ => ProbeResult::unknown("iQIYI"),
+    }
+}
+pub struct IQiYi { pub base: String }
+impl Default for IQiYi {
+    fn default() -> Self { IQiYi { base: "https://www.iq.com".to_string() } }
+}
+#[async_trait]
+impl Probe for IQiYi {
+    fn name(&self) -> &'static str { "iQIYI" }
+    async fn check(&self, client: &Client) -> ProbeResult {
+        match client.get(&self.base).send().await {
+            Ok(resp) => classify_iqiyi(resp.status().as_u16()),
+            Err(_) => ProbeResult::unknown("iQIYI"),
+        }
+    }
+}
+
+// ===== KOCOWA =====
+// GET kocowa.com/ → body 含 "is not available in your region or country" 或 403=封锁;200=可用。
+pub fn parse_kocowa(status: u16, body: &str) -> ProbeResult {
+    if status == 403 || body.contains("is not available in your region or country") {
+        return ProbeResult::new("KOCOWA", ProbeStatus::Blocked, None);
+    }
+    if status == 200 { return ProbeResult::new("KOCOWA", ProbeStatus::Unlocked, None); }
+    ProbeResult::unknown("KOCOWA")
+}
+pub struct Kocowa { pub base: String }
+impl Default for Kocowa {
+    fn default() -> Self { Kocowa { base: "https://www.kocowa.com".to_string() } }
+}
+#[async_trait]
+impl Probe for Kocowa {
+    fn name(&self) -> &'static str { "KOCOWA" }
+    async fn check(&self, client: &Client) -> ProbeResult {
+        let url = format!("{}/", self.base);
+        match client.get(&url).send().await {
+            Ok(resp) => {
+                let st = resp.status().as_u16();
+                let body = resp.text().await.unwrap_or_default();
+                parse_kocowa(st, &body)
+            }
+            Err(_) => ProbeResult::unknown("KOCOWA"),
+        }
+    }
+}
+
+// ===== Viu =====
+// GET viu.com → 200=可用;403/451=封锁。
+pub fn classify_viu(status: u16) -> ProbeResult {
+    match status {
+        200 => ProbeResult::new("Viu", ProbeStatus::Unlocked, None),
+        403 | 451 => ProbeResult::new("Viu", ProbeStatus::Blocked, None),
+        _ => ProbeResult::unknown("Viu"),
+    }
+}
+pub struct Viu { pub base: String }
+impl Default for Viu {
+    fn default() -> Self { Viu { base: "https://www.viu.com".to_string() } }
+}
+#[async_trait]
+impl Probe for Viu {
+    fn name(&self) -> &'static str { "Viu" }
+    async fn check(&self, client: &Client) -> ProbeResult {
+        match client.get(&self.base).send().await {
+            Ok(resp) => classify_viu(resp.status().as_u16()),
+            Err(_) => ProbeResult::unknown("Viu"),
+        }
+    }
+}
+
+// ===== TikTok(含地区)=====
+// GET tiktok.com/explore → 解析 "region":"XX";含 /hk/notfound=封锁;非 200=封锁。
+pub fn parse_tiktok(status: u16, body: &str) -> ProbeResult {
+    use crate::probe::unlock_util::between;
+    if status != 200 { return ProbeResult::new("TikTok", ProbeStatus::Blocked, None); }
+    // HK 用户被重定向到 /hk/notfound:对该出口封锁,但检出地区为 hk(故 Blocked 仍带 region)。
+    if body.contains("https://www.tiktok.com/hk/notfound") {
+        return ProbeResult::new("TikTok", ProbeStatus::Blocked, Some("hk".into()));
+    }
+    match between(body, "\"region\":\"", "\"") {
+        Some(r) if !r.is_empty() => ProbeResult::new("TikTok", ProbeStatus::Unlocked, Some(r.to_lowercase())),
+        _ => ProbeResult::new("TikTok", ProbeStatus::Blocked, None),
+    }
+}
+pub struct TikTok { pub base: String }
+impl Default for TikTok {
+    fn default() -> Self { TikTok { base: "https://www.tiktok.com".to_string() } }
+}
+#[async_trait]
+impl Probe for TikTok {
+    fn name(&self) -> &'static str { "TikTok" }
+    async fn check(&self, client: &Client) -> ProbeResult {
+        let url = format!("{}/explore", self.base);
+        match client.get(&url).send().await {
+            Ok(resp) => {
+                let st = resp.status().as_u16();
+                let body = resp.text().await.unwrap_or_default();
+                parse_tiktok(st, &body)
+            }
+            Err(_) => ProbeResult::unknown("TikTok"),
+        }
+    }
+}
+
+// ─────────────────────────────────────────────
 // 单元测试(TDD)
 // ─────────────────────────────────────────────
 
@@ -1107,5 +1222,36 @@ mod tests {
         let r = p.check(&client).await;
         m.assert();
         assert_eq!(r.status, ProbeStatus::Unlocked);
+    }
+
+    #[test]
+    fn iqiyi_status_mapping() {
+        assert_eq!(classify_iqiyi(200).status, ProbeStatus::Unlocked);
+        assert_eq!(classify_iqiyi(403).status, ProbeStatus::Blocked);
+        assert_eq!(classify_iqiyi(500).status, ProbeStatus::Unknown);
+    }
+
+    #[test]
+    fn kocowa_branches() {
+        assert_eq!(parse_kocowa(200, "ok").status, ProbeStatus::Unlocked);
+        assert_eq!(parse_kocowa(200, "is not available in your region or country").status, ProbeStatus::Blocked);
+        assert_eq!(parse_kocowa(403, "").status, ProbeStatus::Blocked);
+    }
+
+    #[test]
+    fn viu_status_mapping() {
+        assert_eq!(classify_viu(200).status, ProbeStatus::Unlocked);
+        assert_eq!(classify_viu(451).status, ProbeStatus::Blocked);
+    }
+
+    #[test]
+    fn tiktok_region_parse() {
+        let r = parse_tiktok(200, r#"...,"region":"US",..."#);
+        assert_eq!(r.status, ProbeStatus::Unlocked);
+        assert_eq!(r.region.as_deref(), Some("us"));
+        let hk = parse_tiktok(200, "go to https://www.tiktok.com/hk/notfound page");
+        assert_eq!(hk.status, ProbeStatus::Blocked);
+        assert_eq!(hk.region.as_deref(), Some("hk"));
+        assert_eq!(parse_tiktok(403, "").status, ProbeStatus::Blocked);
     }
 }
