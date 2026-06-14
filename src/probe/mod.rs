@@ -35,14 +35,19 @@ pub struct ProbeResult {
     pub status: ProbeStatus,
     pub region: Option<String>,
     pub unlock_type: UnlockType,
+    pub info: Option<String>,
 }
 
 impl ProbeResult {
     pub fn new(name: &str, status: ProbeStatus, region: Option<String>) -> Self {
-        ProbeResult { name: name.to_string(), status, region, unlock_type: UnlockType::Unknown }
+        ProbeResult { name: name.to_string(), status, region, unlock_type: UnlockType::Unknown, info: None }
     }
     pub fn unknown(name: &str) -> Self {
         ProbeResult::new(name, ProbeStatus::Unknown, None)
+    }
+    pub fn with_info(mut self, info: impl Into<String>) -> Self {
+        self.info = Some(info.into());
+        self
     }
 }
 
@@ -142,6 +147,7 @@ pub fn render_terminal(results: &[ProbeResult], lang: crate::i18n::Lang, no_colo
         lang.pick("状态", "Status"),
         lang.pick("地区", "Region"),
         lang.pick("类型", "Type"),
+        lang.pick("备注", "Note"),
     ]);
     for r in results {
         let region = r.region.clone().unwrap_or_else(|| "—".to_string());
@@ -153,7 +159,8 @@ pub fn render_terminal(results: &[ProbeResult], lang: crate::i18n::Lang, no_colo
             (false, UnlockType::Dns) => utype.fg(Color::Yellow),
             _ => utype,
         };
-        t.add_row(vec![Cell::new(&r.name), status, Cell::new(region), utype]);
+        let note = r.info.clone().unwrap_or_else(|| "—".to_string());
+        t.add_row(vec![Cell::new(&r.name), status, Cell::new(region), utype, Cell::new(note)]);
     }
     out.push_str(&t.to_string());
     out.push('\n');
@@ -176,17 +183,19 @@ pub fn render_section(results: &[ProbeResult], lang: crate::i18n::Lang) -> Strin
     use std::fmt::Write;
     let mut out = String::new();
     writeln!(out, "## {}\n", lang.pick("流媒体 & AI 解锁检测", "Streaming & AI unlock")).ok();
-    writeln!(out, "| {} | {} | {} | {} |",
+    writeln!(out, "| {} | {} | {} | {} | {} |",
         lang.pick("服务", "Service"),
         lang.pick("状态", "Status"),
         lang.pick("地区", "Region"),
         lang.pick("类型", "Type"),
+        lang.pick("备注", "Note"),
     ).ok();
-    writeln!(out, "|---|---|---|---|").ok();
+    writeln!(out, "|---|---|---|---|---|").ok();
     for r in results {
         let region = r.region.clone().unwrap_or_else(|| "—".to_string());
-        writeln!(out, "| {} | {} | {} | {} |",
-            r.name, r.status.label(lang), region, r.unlock_type.label(lang)).ok();
+        let note = r.info.clone().unwrap_or_else(|| "—".to_string());
+        writeln!(out, "| {} | {} | {} | {} | {} |",
+            r.name, r.status.label(lang), region, r.unlock_type.label(lang), note).ok();
     }
     out
 }
@@ -218,5 +227,22 @@ mod tests {
         assert_eq!(r.unlock_type, UnlockType::Unknown); // default before check
         let ut = classify_native_dns("US", r.region.as_deref());
         assert_eq!(ut, UnlockType::Native);
+    }
+
+    #[test]
+    fn probe_result_with_info_and_default_none() {
+        let r = ProbeResult::new("Steam", ProbeStatus::Unlocked, Some("us".into()));
+        assert_eq!(r.info, None);
+        let r2 = r.with_info("Community Available");
+        assert_eq!(r2.info.as_deref(), Some("Community Available"));
+    }
+
+    #[test]
+    fn render_terminal_has_note_column() {
+        let mut r = ProbeResult::new("Steam", ProbeStatus::Unlocked, Some("us".into()));
+        r = r.with_info("Community Available");
+        let s = render_terminal(&[r], crate::i18n::Lang::Zh, true);
+        assert!(s.contains("备注"));
+        assert!(s.contains("Community Available"));
     }
 }
