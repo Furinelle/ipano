@@ -769,6 +769,7 @@ impl Probe for Viu {
 pub fn parse_tiktok(status: u16, body: &str) -> ProbeResult {
     use crate::probe::unlock_util::between;
     if status != 200 { return ProbeResult::new("TikTok", ProbeStatus::Blocked, None); }
+    // HK 用户被重定向到 /hk/notfound:对该出口封锁,但检出地区为 hk(故 Blocked 仍带 region)。
     if body.contains("https://www.tiktok.com/hk/notfound") {
         return ProbeResult::new("TikTok", ProbeStatus::Blocked, Some("hk".into()));
     }
