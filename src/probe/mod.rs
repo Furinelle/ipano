@@ -10,6 +10,7 @@ pub mod route;
 pub mod dnsbl;
 pub mod speedtest;
 pub mod unlock_util;
+pub mod web;
 
 /// 解锁探测结果状态
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -110,6 +111,7 @@ pub fn all_probes() -> Vec<Box<dyn Probe>> {
         Box::new(ai::ChatGpt::default()),
         Box::new(ai::Claude::default()),
         Box::new(ai::Gemini::default()),
+        Box::new(web::Bing::default()),
     ]
 }
 
