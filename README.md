@@ -9,6 +9,8 @@
 
 ## 当前状态
 
+**v0.19.0 — IP 测试对标融合怪/UnlockTests**。`--raw` 逐源详表补齐 13 个 IP 质量字段(Tor/爬虫/移动/滥用/Bogon/浏览器·系统分布/VT 未检出/信任·欺诈·AbuseIPDB 分),默认报告与 JSON(新增 `sources_data` 逐源数组)同步补全。解锁探测 **19 → 38 项**:新增 AI(Claude/Gemini/MetaAI)、搜索工具(Bing/GoogleSearch/Reddit/Wikipedia/OneTrust)、商店区域(Apple/GooglePlay/Steam)、亚洲流媒体+短视频(iQIYI/KOCOWA/Viu/TikTok)、CDN 定位(Netflix CDN/YouTube CDN);`ProbeResult` 加「备注」列。对标 [oneclickvirt/UnlockTests](https://github.com/oneclickvirt/UnlockTests)。
+
 **v0.18.0 — IP 质量多源扩充 阶段二(keyed 源)**。新接入 8 个需 API key 的高价值源(virustotal / cloudflare radar / ipregistry / ipdata.co / getipintel / bigdatacloud / scamalytics / dkly);无 key 自动跳过并标注,绝不伪造。新增字段:威胁等级、人机流量占比、设备/OS/浏览器分布、是否云/中继/匿名/bogon、VT 黑名单四项计数。ipfighter(无公开 API)与 fraudlogix(API 文档未公开)按「不可得即放弃」原则未接入。
 
 **v0.17.0 — IP 质量多源扩充 阶段一(免key源)**。默认报告新接入 6 个免key源(ipwhois.io / db-ip / ipquery.io / **ipapi.is(ASN/公司滥用分)** / ipapi.co / ip2location.io),新增 使用类型/公司类型/ASN·公司滥用分/是否数据中心 字段;多源布尔(数据中心等)合并改**多数决**;新增 `--raw` 逐源详表(每字段标 `[源缩写]`,直观看源间分歧);`--dnsbl` 黑名单从 12 扩到 **211** 条。对标 [oneclickvirt/securityCheck](https://github.com/oneclickvirt/securityCheck)。
@@ -50,7 +52,7 @@
 - **一键全跑(`-A` / `--all`)**:同时启用 --probe/--mail/--route/--dnsbl,VPS 上线后一条命令完成全景体检(测速因耗流量需单独 --speedtest)
 - **配置文件(`~/.config/ipano/config.toml`)**:持久化 lang/timeout/no_color/ping0_token 及各模块常开(always.probe/mail/route/dnsbl);CLI 参数优先覆盖;文件不存在时静默跳过
 - **DNSBL 黑名单检测(`--dnsbl`)**:并发查询 **211 个** DNSBL(Spamhaus/SpamCop/Barracuda/CBL/SORBS/UCEProtect/DroneBL/SpamRATS/Mailspike/Abusix 等,来源 fnando/email_data);DNS 反向查询(IPv4 反转追加 DNSBL 域名),每条 4s 超时;comfy-table 展示命中数与每条状态;`--markdown` pipe 表;`--json` 含 `dnsbl[]` 字段;IPv6 返回空跳过
-- **解锁检测(`--probe`)**:19 项并发探测(Netflix/Disney+/HBO Max/Hulu/Prime Video/Bilibili CN/HK·TW/AbemaTV/DAZN/BBC iPlayer/Crunchyroll/Paramount+/Peacock/Discovery+/Spotify/TVB Anywhere+/Funimation/YouTube Premium/ChatGPT);返回解锁状态、地区码(有 API 的服务)及 Native/DNS 类型(探针机地区 vs 内容地区对比);comfy-table 包边表呈现,`--markdown` 输出 pipe 表
+- **解锁检测(`--probe`)**:38 项并发探测(对标 oneclickvirt/UnlockTests),含流媒体(Netflix/Disney+/HBO Max/Hulu/Prime Video/Bilibili/AbemaTV/DAZN/BBC/Crunchyroll/Paramount+/Peacock/Discovery+/Spotify/TVB/Funimation/YouTube/iQIYI/KOCOWA/Viu)、AI(ChatGPT/Claude/Gemini/MetaAI)、搜索工具(Bing/GoogleSearch/Reddit/Wikipedia 可编辑性/OneTrust)、商店区域(Apple/GooglePlay/Steam)、短视频(TikTok)、CDN 定位(Netflix CDN/YouTube CDN);返回解锁状态、地区码、备注(如 Community Available/Rate Limited)及 Native/DNS 类型;comfy-table 包边表呈现,`--markdown` 输出 pipe 表。解锁探测为公开端点启发式抓取,随各服务变动可能失效;MetaAI/InstagramMusic 需有效会话、GooglePlay/YouTube CDN 响应体大,慢链路下可能降级 Unknown(绝不伪造)
 - **邮件端口连通性(`--mail`)**:6 协议矩阵 SMTP/SMTPS/POP3/POP3S/IMAP/IMAPS × 15 家邮局(Gmail/Outlook/Office365/Yahoo/Apple/QQ/163/Sina/Sohu/Yandex/Zoho/GMX/MailRU/AOL/FastMail),包边表呈现(VPS 25 端口常被封,一眼可见)
 - **三网回程路由(`--route`)**:原生 Rust ICMP traceroute 到 电信/联通/移动 × 北京/上海/广州/成都 12 个参考节点(单 socket 并行),每跳复用 ip-api 标注 AS/归属,按骨干 ASN(CN2 AS4809 / 163 AS4134 / 169 AS4837 / 9929 / CMIN2 AS58807 / CMI AS58453 / CMNET AS9808 等)启发式识别回程线路类型与质量档(优质/普通),并对电信 CN2 细分 GIA/GT;需 root/`cap_net_raw`,无特权自动降级
 
@@ -96,7 +98,7 @@ ipano --json 8.8.8.8   # 输出 JSON
 ipano --markdown 1.1.1.1   # 输出 Markdown(含各源对比表 + 启发式结论)
 ipano --raw 1.1.1.1    # 逐源原始详表(每字段标 [源缩写],对标 securityCheck)
 ipano --lang en        # 英文输出(结论/对比/Markdown)
-ipano --probe          # 解锁检测(19 服务,含 Region + Native/DNS 类型)
+ipano --probe          # 解锁检测(38 服务:流媒体/AI/搜索/商店/CDN,含 Region + Native/DNS + 备注)
 ipano --mail           # 邮件端口连通性(6 协议 × 15 家邮局矩阵)
 ipano --ping0-token <TOKEN>   # 复用浏览器解出的 ping0 token(60 秒内有效)
 ipano --route          # 三网回程路由(原生 traceroute,需 root/cap_net_raw)

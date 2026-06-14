@@ -11,6 +11,7 @@ pub mod dnsbl;
 pub mod speedtest;
 pub mod unlock_util;
 pub mod web;
+pub mod cdn;
 
 /// 解锁探测结果状态
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -122,6 +123,12 @@ pub fn all_probes() -> Vec<Box<dyn Probe>> {
         Box::new(Kocowa::default()),
         Box::new(Viu::default()),
         Box::new(TikTok::default()),
+        Box::new(cdn::NetflixCdn::default()),
+        Box::new(cdn::YoutubeCdn::default()),
+        Box::new(web::MetaAI::default()),
+        Box::new(web::SonyLiv::default()),
+        Box::new(web::GooglePlay::default()),
+        Box::new(web::InstagramMusic::default()),
     ]
 }
 

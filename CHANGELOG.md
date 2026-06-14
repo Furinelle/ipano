@@ -4,7 +4,14 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [未发布] v0.19.0 进行中
+## [0.19.0] - 2026-06-14
+
+### 阶段 C — 复杂探针 + CDN 定位(探针 32→38)
+
+- 复杂探针(简化单请求,对标 oneclickvirt/UnlockTests):MetaAI、SonyLiv、GooglePlay、InstagramMusic。
+- CDN 定位(新 `probe/cdn.rs`):Netflix CDN(api.fast.com,落地国家)、YouTube CDN(redirector.googlevideo.com,落地节点)。
+- `--probe` 探针总数 19 → 38(本版 A+B+C 合计)。
+- **诚实注明**:SonyLiv / Netflix CDN 稳定可用;GooglePlay / YouTube CDN 响应体大(~1MB),慢链路/代理下可能超 8s 超时降级 Unknown(VPS 直连正常);MetaAI(端点无会话返回 401)、InstagramMusic(graphql 需有效会话)在多数环境降级 Unknown——按「不可得即降级、绝不伪造」原则保留并标注。
 
 ### 阶段 A — IP 质量全字段渲染补全
 
