@@ -4,7 +4,7 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/),版本遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [0.20.0] - 2026-06-14
+## [0.20.0] - 2026-06-15
 
 ### 新增
 
@@ -16,6 +16,7 @@
 
 - `ipano <IP>`、所有功能 flag(`--json`/`--markdown`/`--raw`/`--probe`/`--mail`/`--route`/`--dnsbl`/`--speedtest`/`--all`)以及非 TTY 管道/cron 场景继续直跑,不进入菜单。
 - `--lang`、`--no-color`、`--timeout`、`--ping0-token`、`-4`、`-6` 作为修饰 flag 可随菜单使用。
+- 配置 `[always]` 常开模块或 `--all` 时,裸跑直接运行对应模块,不进入菜单(`[always]` 的「始终开启」语义优先于菜单)。
 
 ## [0.19.0] - 2026-06-14
 
