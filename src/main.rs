@@ -73,6 +73,11 @@ async fn main() {
     let lang = i18n::Lang::parse(&lang_str);
     let client = fetch::build_client(timeout);
 
+    // 先应用 config [always] 与 --all 展开,再判断是否进菜单:
+    // 配了 always.* 的用户裸跑应直接跑对应模块(符合「始终开启」语义),不被菜单接管。
+    apply_config_always(&mut args, cfg.always.as_ref());
+    expand_all(&mut args);
+
     if interactive::should_enter_menu(&args, std::io::stdin().is_terminal()) {
         interactive::run(
             args,
@@ -86,9 +91,6 @@ async fn main() {
         .await;
         return;
     }
-
-    apply_config_always(&mut args, cfg.always.as_ref());
-    expand_all(&mut args);
 
     let targets = match resolve_targets(None, &args, &client).await {
         Ok(targets) => targets,
