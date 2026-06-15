@@ -9,6 +9,8 @@
 
 ## 当前状态
 
+**v0.20.0 — 交互式数字菜单**。裸跑 `ipano` 且 stdin 是 TTY 时进入菜单,可输入编号选择运行全景报告、逐源详表、解锁检测、邮局连通、三网回程、DNSBL、多节点测速;支持逗号多选、`A` 全跑(不含测速)、`I` 修改目标 IP、`Q` 退出。自动化/管道场景不变;需要旧式裸跑直出报告可用 `ipano --report`。
+
 **v0.19.0 — IP 测试对标融合怪/UnlockTests**。`--raw` 逐源详表补齐 13 个 IP 质量字段(Tor/爬虫/移动/滥用/Bogon/浏览器·系统分布/VT 未检出/信任·欺诈·AbuseIPDB 分),默认报告与 JSON(新增 `sources_data` 逐源数组)同步补全。解锁探测 **19 → 38 项**:新增 AI(Claude/Gemini/MetaAI)、搜索工具(Bing/GoogleSearch/Reddit/Wikipedia/OneTrust)、商店区域(Apple/GooglePlay/Steam)、亚洲流媒体+短视频(iQIYI/KOCOWA/Viu/TikTok)、CDN 定位(Netflix CDN/YouTube CDN);`ProbeResult` 加「备注」列。对标 [oneclickvirt/UnlockTests](https://github.com/oneclickvirt/UnlockTests)。
 
 **v0.18.0 — IP 质量多源扩充 阶段二(keyed 源)**。新接入 8 个需 API key 的高价值源(virustotal / cloudflare radar / ipregistry / ipdata.co / getipintel / bigdatacloud / scamalytics / dkly);无 key 自动跳过并标注,绝不伪造。新增字段:威胁等级、人机流量占比、设备/OS/浏览器分布、是否云/中继/匿名/bogon、VT 黑名单四项计数。ipfighter(无公开 API)与 fraudlogix(API 文档未公开)按「不可得即放弃」原则未接入。
@@ -19,7 +21,8 @@
 
 ## 功能(当前版本)
 
-- **双查询模式**:无参数查本机出口 IP(IPv4/IPv6),带参数查任意指定 IP
+- **交互式菜单**:TTY 中裸跑 `ipano` 进入数字菜单;菜单外仍支持 `ipano --report` 查本机出口 IP、`ipano <IP>` 查任意指定 IP
+- **双查询模式**:直跑报告时查本机出口 IP(IPv4/IPv6)或任意指定 IP
 - **多源并发聚合**:同时查询 [ip-api](https://ip-api.com)、[ipinfo](https://ipinfo.io)、[ip.sb](https://ip.sb),单源失败自动降级、不拖垮整体
 - **多源 IP 质量(免key 6 源)**:[ipwhois.io](https://ipwhois.io)/[db-ip](https://db-ip.com)/[ipquery.io](https://ipquery.io)/**[ipapi.is](https://ipapi.is)(ASN/公司滥用分)**/[ipapi.co](https://ipapi.co)/[ip2location.io](https://www.ip2location.io) 并进默认报告,新增 使用类型/公司类型/ASN·公司滥用分/是否数据中心;多源布尔多数决合并,`--raw` 看每字段逐源 `[源缩写]` 取值(对标 securityCheck)
 - **混合式合并**:基础字段按源优先级去重合一,报告标注各源成功/失败状态
@@ -90,7 +93,8 @@ cargo build --release --target x86_64-unknown-linux-musl
 ## 用法
 
 ```bash
-ipano                  # 查本机出口 IP(v4 + v6)
+ipano                  # 交互式数字菜单(TTY);管道/cron 中仍直跑报告
+ipano --report         # 跳过菜单,查本机出口 IP(v4 + v6)
 ipano 1.1.1.1          # 查指定 IP
 ipano -4               # 仅 IPv4
 ipano -6               # 仅 IPv6
@@ -110,6 +114,26 @@ ipano --speedtest=cn,jp # 选择三网全部 + 日本(分组/server id 逗号可
 ipano --no-color       # 关闭彩色
 ipano --timeout 5      # 单源超时(秒,默认 8)
 ```
+
+交互菜单示例:
+
+```text
+═══ ipano 交互菜单 ═══
+目标: 本机出口
+
+1. 仅 IP 全景报告
+2. 逐源质量详表
+3. 解锁检测 38 项
+4. 邮局连通
+5. 三网回程路由
+6. DNSBL 黑名单
+7. 多节点测速(耗流量)
+A. 全跑(不含测速)
+I. 修改目标 IP
+Q. 退出
+```
+
+可输入 `3,6` 运行「全景报告 + 解锁检测 + DNSBL」;输入 `I` 设置目标 IP,留空恢复本机出口。`--lang`、`--no-color`、`--timeout`、`--ping0-token`、`-4`、`-6` 可随菜单使用;所有功能 flag 和指定 IP 仍直接运行,不进入菜单。
 
 终端输出示例:
 
@@ -167,6 +191,7 @@ ipano --timeout 5      # 单源超时(秒,默认 8)
 | P13 | **DNSBL 黑名单检测**(12 个主流列表,DNS 反向查询,`--dnsbl`)| ✅ |
 | P14 | **--all 一键全跑 + 配置文件**(`~/.config/ipano/config.toml`,`-A`)| ✅ |
 | P15 | **多节点下载测速** → v0.16 重做为**三网回国+国际测速**(speedtest.net 三网/港/教育/美日新,延迟+下载+上传,运行时解析,全目录可选,`--speedtest`)| ✅ |
+| P16 | **交互式数字菜单**(裸跑 + TTY 进菜单,多选模块,`I` 改目标 IP,`--report` 直跑报告)| ✅ |
 | P7 | **邮局连通性**(SMTP 25/465/587,`--mail`)| ✅ |
 | P8 | **ping0 token 手动复用**(`--ping0-token`,浏览器解验证码后提供,否则降级)| ✅ |
 | P9 | **三网回程路由**(原生 Rust traceroute + 三网节点表 + 回程线路识别 + 每跳 AS/geo 标注,`--route`,需 root,无特权降级)| ✅ |

@@ -1,6 +1,6 @@
 use clap::Parser;
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(name = "ipano", version, about = "一站式 IP 全景聚合检测工具")]
 pub struct Args {
     /// 要查询的 IP;省略则查本机出口 IP
@@ -14,6 +14,9 @@ pub struct Args {
     /// 输出 JSON
     #[arg(long)]
     pub json: bool,
+    /// 强制直跑本机出口报告;用于跳过裸跑时的交互菜单
+    #[arg(long)]
+    pub report: bool,
     /// 输出 Markdown(含各源对比表 + 启发式结论)
     #[arg(long)]
     pub markdown: bool,
